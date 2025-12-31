@@ -2,27 +2,8 @@
 
 export default function LoadingSpinner() {
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '200px',
-    }}>
-      <div style={{
-        width: '40px',
-        height: '40px',
-        border: '4px solid #f3f3f3',
-        borderTop: '4px solid #5DABA8',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-      }} />
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
+    <div className="flex justify-center items-center min-h-52">
+      <div className="w-10 h-10 border-4 border-gray-200 border-t-store rounded-full animate-spin" />
     </div>
   );
 }
-

@@ -44,7 +44,6 @@ export default function RegistrationForm() {
     fireEquipmentLayoutImage: null,
   });
 
-  // 下書き保存（sessionStorage）
   useEffect(() => {
     const saved = sessionStorage.getItem('exhibitor_draft');
     if (saved) {
@@ -119,7 +118,6 @@ export default function RegistrationForm() {
         throw new Error('認証されていません');
       }
 
-      // 画像アップロード
       const uploadPromises: Promise<string>[] = [];
       const imageFields = [
         'businessLicenseImage',
@@ -146,7 +144,6 @@ export default function RegistrationForm() {
 
       await Promise.all(uploadPromises);
 
-      // 出店者情報を保存
       const { error: insertError } = await supabase
         .from('exhibitors')
         .insert({
@@ -167,7 +164,6 @@ export default function RegistrationForm() {
 
       if (insertError) throw insertError;
 
-      // 下書きをクリア
       sessionStorage.removeItem('exhibitor_draft');
       router.push('/');
     } catch (err: any) {
@@ -179,433 +175,242 @@ export default function RegistrationForm() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      padding: '20px',
-      backgroundColor: '#f5f5f5',
-    }}>
-      <div style={{
-        maxWidth: '600px',
-        margin: '0 auto',
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '30px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      }}>
-        <h1 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-          marginBottom: '20px',
-          textAlign: 'center',
-        }}>
-          出店者情報登録
-        </h1>
+    <div className="min-h-screen p-5 bg-gray-50">
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <h1 className="text-2xl font-bold mb-5 text-center">
+            出店者情報登録
+          </h1>
 
-        <ProgressBar currentStep={currentStep} totalSteps={3} />
+          <ProgressBar currentStep={currentStep} totalSteps={3} />
 
-        {error && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '4px',
-            marginBottom: '20px',
-            fontSize: '14px',
-          }}>
-            {error}
-          </div>
-        )}
-
-        {/* ステップ1: 基本情報 */}
-        {currentStep === 1 && (
-          <div>
-            <h2 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              marginBottom: '20px',
-            }}>
-              基本情報
-            </h2>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                名前 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
+          {error && (
+            <div className="p-3 mb-5 bg-red-50 text-red-700 rounded text-sm">
+              {error}
             </div>
+          )}
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                性別 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <select
-                value={formData.gender}
-                onChange={(e) => handleInputChange('gender', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              >
-                <option value="">選択してください</option>
-                <option value="男">男</option>
-                <option value="女">女</option>
-                <option value="それ以外">それ以外</option>
-              </select>
-            </div>
+          {/* ステップ1: 基本情報 */}
+          {currentStep === 1 && (
+            <div>
+              <h2 className="text-lg font-bold mb-5">基本情報</h2>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                年齢 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="number"
-                value={formData.age}
-                onChange={(e) => handleInputChange('age', e.target.value)}
-                required
-                min="0"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    名前 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    required
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  />
+                </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                電話番号 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="tel"
-                value={formData.phoneNumber}
-                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    性別 <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => handleInputChange('gender', e.target.value)}
+                    required
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  >
+                    <option value="">選択してください</option>
+                    <option value="男">男</option>
+                    <option value="女">女</option>
+                    <option value="それ以外">それ以外</option>
+                  </select>
+                </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                メールアドレス <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    年齢 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => handleInputChange('age', e.target.value)}
+                    required
+                    min="0"
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  />
+                </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                ジャンル（カテゴリ）
-              </label>
-              <input
-                type="text"
-                value={formData.genreCategory}
-                onChange={(e) => handleInputChange('genreCategory', e.target.value)}
-                placeholder="例: 飲食、雑貨、アート"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    電話番号 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                    required
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  />
+                </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                ジャンル（自由記述）
-              </label>
-              <textarea
-                value={formData.genreFreeText}
-                onChange={(e) => handleInputChange('genreFreeText', e.target.value)}
-                placeholder="ジャンルの詳細を記入してください"
-                rows={4}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  fontFamily: 'inherit',
-                }}
-              />
-            </div>
-          </div>
-        )}
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    メールアドレス <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    required
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  />
+                </div>
 
-        {/* ステップ2: 書類アップロード */}
-        {currentStep === 2 && (
-          <div>
-            <h2 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              marginBottom: '20px',
-            }}>
-              書類アップロード
-            </h2>
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    ジャンル（カテゴリ）
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.genreCategory}
+                    onChange={(e) => handleInputChange('genreCategory', e.target.value)}
+                    placeholder="例: 飲食、雑貨、アート"
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  />
+                </div>
 
-            <ImageUpload
-              label="営業許可証"
-              onFileSelect={(file) => handleImageSelect('businessLicenseImage', file)}
-              enableOCR={true}
-              documentType="businessLicense"
-              onRecognized={(data) => {
-                console.log('営業許可証認識結果:', data);
-                // 認識結果を保存する場合はここで処理
-              }}
-            />
-
-            <ImageUpload
-              label="車検証"
-              onFileSelect={(file) => handleImageSelect('vehicleInspectionImage', file)}
-              enableOCR={true}
-              documentType="vehicleInspection"
-              onRecognized={(data) => {
-                console.log('車検証認識結果:', data);
-              }}
-            />
-
-            <ImageUpload
-              label="自賠責保険"
-              onFileSelect={(file) => handleImageSelect('automobileInspectionImage', file)}
-              enableOCR={true}
-              documentType="automobileInspection"
-              onRecognized={(data) => {
-                console.log('自賠責保険認識結果:', data);
-              }}
-            />
-
-            <ImageUpload
-              label="PL保険"
-              onFileSelect={(file) => handleImageSelect('plInsuranceImage', file)}
-              enableOCR={true}
-              documentType="plInsurance"
-              onRecognized={(data) => {
-                console.log('PL保険認識結果:', data);
-              }}
-            />
-
-            <ImageUpload
-              label="消防設備配置図"
-              onFileSelect={(file) => handleImageSelect('fireEquipmentLayoutImage', file)}
-            />
-          </div>
-        )}
-
-        {/* ステップ3: 利用規約確認 */}
-        {currentStep === 3 && (
-          <div>
-            <h2 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              marginBottom: '20px',
-            }}>
-              利用規約確認
-            </h2>
-
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#f9f9f9',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              maxHeight: '400px',
-              overflowY: 'auto',
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '12px',
-              }}>
-                利用規約
-              </h3>
-              <div style={{
-                fontSize: '14px',
-                lineHeight: '1.6',
-                color: '#666',
-              }}>
-                <p style={{ marginBottom: '12px' }}>
-                  本サービスをご利用いただくにあたり、以下の利用規約に同意していただく必要があります。
-                </p>
-                <p style={{ marginBottom: '12px' }}>
-                  1. 出店者は、提供する情報が正確であることを保証します。
-                </p>
-                <p style={{ marginBottom: '12px' }}>
-                  2. 出店者は、必要な書類を適切に提出する責任があります。
-                </p>
-                <p style={{ marginBottom: '12px' }}>
-                  3. 主催者は、出店者の申請を承認または却下する権利を有します。
-                </p>
-                <p style={{ marginBottom: '12px' }}>
-                  4. 個人情報は適切に管理され、本サービスの目的のみに使用されます。
-                </p>
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    ジャンル（自由記述）
+                  </label>
+                  <textarea
+                    value={formData.genreFreeText}
+                    onChange={(e) => handleInputChange('genreFreeText', e.target.value)}
+                    placeholder="ジャンルの詳細を記入してください"
+                    rows={4}
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent resize-none"
+                  />
+                </div>
               </div>
             </div>
+          )}
 
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '20px',
-              cursor: 'pointer',
-            }}>
-              <input
-                type="checkbox"
-                required
-                style={{
-                  marginRight: '8px',
-                  width: '20px',
-                  height: '20px',
+          {/* ステップ2: 書類アップロード */}
+          {currentStep === 2 && (
+            <div>
+              <h2 className="text-lg font-bold mb-5">書類アップロード</h2>
+
+              <ImageUpload
+                label="営業許可証"
+                onFileSelect={(file) => handleImageSelect('businessLicenseImage', file)}
+                enableOCR={true}
+                documentType="businessLicense"
+                onRecognized={(data) => {
+                  console.log('営業許可証認識結果:', data);
                 }}
               />
-              <span style={{ fontSize: '14px' }}>
-                利用規約に同意します <span style={{ color: '#e74c3c' }}>*</span>
-              </span>
-            </label>
-          </div>
-        )}
 
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginTop: '30px',
-        }}>
-          {currentStep > 1 && (
-            <button
-              onClick={handleBack}
-              style={{
-                flex: 1,
-                padding: '12px',
-                backgroundColor: '#f0f0f0',
-                color: '#333',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: 'pointer',
-              }}
-            >
-              戻る
-            </button>
+              <ImageUpload
+                label="車検証"
+                onFileSelect={(file) => handleImageSelect('vehicleInspectionImage', file)}
+                enableOCR={true}
+                documentType="vehicleInspection"
+                onRecognized={(data) => {
+                  console.log('車検証認識結果:', data);
+                }}
+              />
+
+              <ImageUpload
+                label="自賠責保険"
+                onFileSelect={(file) => handleImageSelect('automobileInspectionImage', file)}
+                enableOCR={true}
+                documentType="automobileInspection"
+                onRecognized={(data) => {
+                  console.log('自賠責保険認識結果:', data);
+                }}
+              />
+
+              <ImageUpload
+                label="PL保険"
+                onFileSelect={(file) => handleImageSelect('plInsuranceImage', file)}
+                enableOCR={true}
+                documentType="plInsurance"
+                onRecognized={(data) => {
+                  console.log('PL保険認識結果:', data);
+                }}
+              />
+
+              <ImageUpload
+                label="消防設備配置図"
+                onFileSelect={(file) => handleImageSelect('fireEquipmentLayoutImage', file)}
+              />
+            </div>
           )}
-          {currentStep < 3 ? (
-            <button
-              onClick={handleNext}
-              style={{
-                flex: 1,
-                padding: '12px',
-                backgroundColor: '#5DABA8',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
-            >
-              次へ
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              style={{
-                flex: 1,
-                padding: '12px',
-                backgroundColor: '#5DABA8',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
-            >
-              登録する
-            </button>
+
+          {/* ステップ3: 利用規約確認 */}
+          {currentStep === 3 && (
+            <div>
+              <h2 className="text-lg font-bold mb-5">利用規約確認</h2>
+
+              <div className="p-5 bg-gray-100 rounded-lg mb-5 max-h-96 overflow-y-auto">
+                <h3 className="text-base font-bold mb-3">利用規約</h3>
+                <div className="text-sm leading-relaxed text-gray-600 space-y-3">
+                  <p>本サービスをご利用いただくにあたり、以下の利用規約に同意していただく必要があります。</p>
+                  <p>1. 出店者は、提供する情報が正確であることを保証します。</p>
+                  <p>2. 出店者は、必要な書類を適切に提出する責任があります。</p>
+                  <p>3. 主催者は、出店者の申請を承認または却下する権利を有します。</p>
+                  <p>4. 個人情報は適切に管理され、本サービスの目的のみに使用されます。</p>
+                </div>
+              </div>
+
+              <label className="flex items-center mb-5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  required
+                  className="w-5 h-5 mr-2"
+                />
+                <span className="text-sm">
+                  利用規約に同意します <span className="text-red-600">*</span>
+                </span>
+              </label>
+            </div>
           )}
-        </div>
-      </div>
+
+          <div className="flex gap-3 mt-8">
+            {currentStep > 1 && (
+              <Button
+                onClick={handleBack}
+                variant="secondary"
+                className="flex-1"
+              >
+                戻る
+              </Button>
+            )}
+            {currentStep < 3 ? (
+              <Button
+                onClick={handleNext}
+                className="flex-1 bg-store hover:bg-store-dark"
+              >
+                次へ
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                className="flex-1 bg-store hover:bg-store-dark"
+              >
+                登録する
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

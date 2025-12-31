@@ -604,6 +604,7 @@ export default function EventForm({ eventId, onComplete, onCancel }: EventFormPr
             <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>画像アップロード</h2>
             <ImageUpload
               label="メイン画像"
+              onChange={(url) => handleInputChange('mainImageUrl', url)}
               onFileSelect={(file) => handleInputChange('mainImage', file)}
             />
             <div style={{ marginBottom: '20px' }}>

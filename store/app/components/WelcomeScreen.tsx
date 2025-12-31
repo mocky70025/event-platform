@@ -21,7 +21,6 @@ export default function WelcomeScreen() {
       } else {
         await signUpWithEmail(email, password);
       }
-      // 認証成功後はページがリロードされる
     } catch (err: any) {
       setError(err.message || '認証に失敗しました');
     } finally {
@@ -46,218 +45,115 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px',
-      backgroundColor: '#f5f5f5',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '400px',
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '30px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      }}>
-        <h1 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-          textAlign: 'center',
-          marginBottom: '30px',
-          color: '#333',
-        }}>
-          出店者向けプラットフォーム
-        </h1>
+    <div className="min-h-screen flex flex-col items-center justify-center p-5 bg-gray-50">
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6">
+          <h1 className="text-2xl font-bold text-center mb-8 text-gray-800">
+            出店者向けプラットフォーム
+          </h1>
 
-        <div style={{
-          display: 'flex',
-          marginBottom: '20px',
-          borderBottom: '1px solid #e0e0e0',
-        }}>
-          <button
-            onClick={() => {
-              setIsLogin(true);
-              setError('');
-            }}
-            style={{
-              flex: 1,
-              padding: '12px',
-              border: 'none',
-              backgroundColor: 'transparent',
-              borderBottom: isLogin ? '2px solid #5DABA8' : 'none',
-              color: isLogin ? '#5DABA8' : '#666',
-              fontWeight: isLogin ? 'bold' : 'normal',
-              cursor: 'pointer',
-              fontSize: '16px',
-            }}
-          >
-            ログイン
-          </button>
-          <button
-            onClick={() => {
-              setIsLogin(false);
-              setError('');
-            }}
-            style={{
-              flex: 1,
-              padding: '12px',
-              border: 'none',
-              backgroundColor: 'transparent',
-              borderBottom: !isLogin ? '2px solid #5DABA8' : 'none',
-              color: !isLogin ? '#5DABA8' : '#666',
-              fontWeight: !isLogin ? 'bold' : 'normal',
-              cursor: 'pointer',
-              fontSize: '16px',
-            }}
-          >
-            新規登録
-          </button>
-        </div>
-
-        {error && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '4px',
-            marginBottom: '20px',
-            fontSize: '14px',
-          }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleEmailAuth}>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              color: '#333',
-            }}>
-              メールアドレス
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '16px',
+          {/* タブ切り替え */}
+          <div className="flex mb-5 border-b border-gray-200">
+            <button
+              onClick={() => {
+                setIsLogin(true);
+                setError('');
               }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              color: '#333',
-            }}>
-              パスワード
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '16px',
+              className={`flex-1 px-3 py-3 text-base transition-colors ${
+                isLogin
+                  ? 'border-b-2 border-store text-store font-bold'
+                  : 'text-gray-600'
+              }`}
+            >
+              ログイン
+            </button>
+            <button
+              onClick={() => {
+                setIsLogin(false);
+                setError('');
               }}
-            />
+              className={`flex-1 px-3 py-3 text-base transition-colors ${
+                !isLogin
+                  ? 'border-b-2 border-store text-store font-bold'
+                  : 'text-gray-600'
+              }`}
+            >
+              新規登録
+            </button>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '12px',
-              backgroundColor: loading ? '#ccc' : '#5DABA8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              marginBottom: '16px',
-            }}
-          >
-            {loading ? '処理中...' : (isLogin ? 'ログイン' : '新規登録')}
-          </button>
-        </form>
+          {/* エラーメッセージ */}
+          {error && (
+            <div className="p-3 mb-5 bg-red-50 text-red-700 rounded text-sm">
+              {error}
+            </div>
+          )}
 
-        <div style={{
-          textAlign: 'center',
-          margin: '20px 0',
-          color: '#999',
-          fontSize: '14px',
-        }}>
-          または
-        </div>
+          {/* メール認証フォーム */}
+          <form onSubmit={handleEmailAuth} className="space-y-4">
+            <div>
+              <label className="block mb-2 text-sm text-gray-700">
+                メールアドレス
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+              />
+            </div>
 
-        <button
-          onClick={handleGoogleAuth}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: 'white',
-            color: '#333',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-          }}
-        >
-          <span>🔍</span>
-          Googleで{isLogin ? 'ログイン' : '登録'}
-        </button>
+            <div>
+              <label className="block mb-2 text-sm text-gray-700">
+                パスワード
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+              />
+            </div>
 
-        <button
-          onClick={handleLineAuth}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: '#06C755',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-          }}
-        >
-          <span>💬</span>
-          LINEで{isLogin ? 'ログイン' : '登録'}
-        </button>
-      </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-store hover:bg-store-dark disabled:opacity-50"
+            >
+              {loading ? '処理中...' : (isLogin ? 'ログイン' : '新規登録')}
+            </Button>
+          </form>
+
+          <div className="text-center my-5 text-gray-400 text-sm">
+            または
+          </div>
+
+          {/* ソーシャルログイン */}
+          <div className="space-y-3">
+            <Button
+              onClick={handleGoogleAuth}
+              disabled={loading}
+              variant="outline"
+              className="w-full"
+            >
+              <span className="mr-2">🔍</span>
+              Googleで{isLogin ? 'ログイン' : '登録'}
+            </Button>
+
+            <Button
+              onClick={handleLineAuth}
+              disabled={loading}
+              className="w-full bg-[#06C755] hover:bg-[#05A647] text-white"
+            >
+              <span className="mr-2">💬</span>
+              LINEで{isLogin ? 'ログイン' : '登録'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

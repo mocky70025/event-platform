@@ -9,33 +9,16 @@ export default function ProgressBar({ currentStep, totalSteps }: ProgressBarProp
   const percentage = (currentStep / totalSteps) * 100;
 
   return (
-    <div style={{
-      width: '100%',
-      marginBottom: '20px',
-    }}>
-      <div style={{
-        width: '100%',
-        height: '8px',
-        backgroundColor: '#e0e0e0',
-        borderRadius: '4px',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          width: `${percentage}%`,
-          height: '100%',
-          backgroundColor: '#5DABA8',
-          transition: 'width 0.3s ease',
-        }} />
+    <div className="w-full mb-5">
+      <div className="w-full h-2 bg-gray-200 rounded overflow-hidden">
+        <div
+          className="h-full bg-store transition-all duration-300 ease-in-out"
+          style={{ width: `${percentage}%` }}
+        />
       </div>
-      <div style={{
-        textAlign: 'center',
-        marginTop: '8px',
-        fontSize: '14px',
-        color: '#666',
-      }}>
+      <div className="text-center mt-2 text-sm text-gray-600">
         {currentStep} / {totalSteps}
       </div>
     </div>
   );
 }
-

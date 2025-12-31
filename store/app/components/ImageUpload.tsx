@@ -6,7 +6,7 @@ import DocumentRecognizer from './DocumentRecognizer';
 interface ImageUploadProps {
   label: string;
   value?: string;
-  onChange: (url: string) => void;
+  onChange?: (url: string) => void;
   onFileSelect: (file: File) => void;
   required?: boolean;
   enableOCR?: boolean;
@@ -42,96 +42,64 @@ export default function ImageUpload({
   };
 
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <label style={{
-        display: 'block',
-        marginBottom: '8px',
-        fontSize: '14px',
-        fontWeight: '500',
-        color: '#333',
-      }}>
+    <div className="mb-5">
+      <label className="block mb-2 text-sm font-medium text-gray-700">
         {label}
-        {required && <span style={{ color: '#e74c3c' }}> *</span>}
+        {required && <span className="text-red-600"> *</span>}
       </label>
-      <div style={{
-        border: '2px dashed #ccc',
-        borderRadius: '8px',
-        padding: '20px',
-        textAlign: 'center',
-        backgroundColor: '#f9f9f9',
-      }}>
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-5 text-center bg-gray-50 hover:bg-gray-100 transition-colors">
         {preview ? (
           <div>
             <img
               src={preview}
               alt="Preview"
-              style={{
-                maxWidth: '100%',
-                maxHeight: '200px',
-                marginBottom: '10px',
-                borderRadius: '4px',
-              }}
+              className="max-w-full max-h-52 mx-auto mb-3 rounded"
             />
             <div>
-              <label style={{
-                display: 'inline-block',
-                padding: '8px 16px',
-                backgroundColor: '#5DABA8',
-                color: 'white',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-              }}>
-                画像を変更
+              <label className="inline-block">
+                <Button
+                  type="button"
+                  className="bg-store hover:bg-store-dark"
+                  disabled={uploading}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById(`file-input-${label}`)?.click();
+                  }}
+                >
+                  画像を変更
+                </Button>
                 <input
+                  id={`file-input-${label}`}
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  style={{ display: 'none' }}
+                  className="hidden"
                   disabled={uploading}
                 />
               </label>
             </div>
           </div>
         ) : (
-          <label style={{
-            display: 'block',
-            cursor: 'pointer',
-          }}>
-            <div style={{
-              fontSize: '48px',
-              color: '#999',
-              marginBottom: '10px',
-            }}>📷</div>
-            <div style={{
-              fontSize: '14px',
-              color: '#666',
-              marginBottom: '10px',
-            }}>
+          <label className="block cursor-pointer">
+            <div className="text-5xl text-gray-400 mb-3">📷</div>
+            <div className="text-sm text-gray-600 mb-3">
               画像を選択
             </div>
-            <div style={{
-              fontSize: '12px',
-              color: '#999',
-            }}>
+            <div className="text-xs text-gray-400">
               JPG, PNG, GIF (最大 5MB)
             </div>
             <input
               type="file"
               accept="image/*"
               onChange={handleFileChange}
-              style={{ display: 'none' }}
+              className="hidden"
               disabled={uploading}
             />
           </label>
         )}
       </div>
       {uploading && (
-        <div style={{
-          marginTop: '10px',
-          fontSize: '14px',
-          color: '#666',
-        }}>
+        <div className="mt-3 text-sm text-gray-600">
           アップロード中...
         </div>
       )}
@@ -149,4 +117,3 @@ export default function ImageUpload({
     </div>
   );
 }
-

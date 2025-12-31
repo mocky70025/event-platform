@@ -1,411 +1,241 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { uploadImage } from '@/lib/storage';
-import ImageUpload from './ImageUpload';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 
-interface Exhibitor {
+interface ExhibitorData {
   id: string;
   name: string;
   gender: string;
   age: number;
   phone_number: string;
   email: string;
-  genre_category?: string;
-  genre_free_text?: string;
-  business_license_image_url?: string;
-  vehicle_inspection_image_url?: string;
-  automobile_inspection_image_url?: string;
-  pl_insurance_image_url?: string;
-  fire_equipment_layout_image_url?: string;
+  genre_category: string | null;
+  genre_free_text: string | null;
 }
 
-interface ExhibitorEditFormProps {
-  exhibitor: Exhibitor;
-  onComplete: () => void;
-  onCancel: () => void;
-}
-
-export default function ExhibitorEditForm({
-  exhibitor,
-  onComplete,
-  onCancel,
-}: ExhibitorEditFormProps) {
-  const [loading, setLoading] = useState(false);
+export default function ExhibitorEditForm() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [formData, setFormData] = useState({
-    name: exhibitor.name,
-    gender: exhibitor.gender,
-    age: exhibitor.age.toString(),
-    phoneNumber: exhibitor.phone_number,
-    email: exhibitor.email,
-    genreCategory: exhibitor.genre_category || '',
-    genreFreeText: exhibitor.genre_free_text || '',
+  const [formData, setFormData] = useState<ExhibitorData>({
+    id: '',
+    name: '',
+    gender: '',
+    age: 0,
+    phone_number: '',
+    email: '',
+    genre_category: null,
+    genre_free_text: null,
   });
 
-  const [imageFiles, setImageFiles] = useState<Record<string, File>>({});
+  useEffect(() => {
+    fetchExhibitorData();
+  }, []);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleImageSelect = (field: string, file: File) => {
-    setImageFiles(prev => ({ ...prev, [field]: file }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
+  const fetchExhibitorData = async () => {
     try {
-      const updateData: any = {
-        name: formData.name,
-        gender: formData.gender,
-        age: parseInt(formData.age),
-        phone_number: formData.phoneNumber,
-        email: formData.email,
-        genre_category: formData.genreCategory || null,
-        genre_free_text: formData.genreFreeText || null,
-      };
-
-      // 画像アップロード
-      const imageFields = [
-        'businessLicenseImage',
-        'vehicleInspectionImage',
-        'automobileInspectionImage',
-        'plInsuranceImage',
-        'fireEquipmentLayoutImage',
-      ] as const;
-
-      for (const field of imageFields) {
-        const file = imageFiles[field];
-        if (file) {
-          const path = `exhibitors/${exhibitor.id}/${field}_${Date.now()}.${file.name.split('.').pop()}`;
-          const url = await uploadImage('documents', path, file);
-          const dbField = field.replace('Image', 'ImageUrl').replace(/([A-Z])/g, '_$1').toLowerCase();
-          updateData[dbField] = url;
-        }
+      const user = await getCurrentUser();
+      if (!user) {
+        router.push('/');
+        return;
       }
 
-      const { error: updateError } = await supabase
+      const { data, error } = await supabase
         .from('exhibitors')
-        .update(updateData)
-        .eq('id', exhibitor.id);
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-      if (updateError) throw updateError;
-
-      onComplete();
-    } catch (err: any) {
-      setError(err.message || '更新に失敗しました');
+      if (error) throw error;
+      setFormData(data);
+    } catch (error) {
+      console.error('出店者情報取得エラー:', error);
+      setError('情報の取得に失敗しました');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleInputChange = (field: keyof ExhibitorData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSaving(true);
+
+    try {
+      const { error: updateError } = await supabase
+        .from('exhibitors')
+        .update({
+          name: formData.name,
+          gender: formData.gender,
+          age: formData.age,
+          phone_number: formData.phone_number,
+          email: formData.email,
+          genre_category: formData.genre_category,
+          genre_free_text: formData.genre_free_text,
+        })
+        .eq('id', formData.id);
+
+      if (updateError) throw updateError;
+
+      alert('プロフィールを更新しました');
+      router.push('/profile');
+    } catch (err: any) {
+      setError(err.message || '更新に失敗しました');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <LoadingSpinner />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      paddingBottom: '80px',
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '16px',
-        borderBottom: '1px solid #e0e0e0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        <h1 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-        }}>
-          プロフィール編集
-        </h1>
-        <button
-          onClick={onCancel}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#f0f0f0',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '14px',
-            cursor: 'pointer',
-          }}
-        >
-          キャンセル
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-50 pb-8">
+      {/* ヘッダー */}
+      <header className="bg-white border-b border-gray-200">
+        <div className="px-4 py-4 flex items-center">
+          <Button
+            onClick={() => router.push('/profile')}
+            variant="ghost"
+            size="sm"
+            className="text-gray-600"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            戻る
+          </Button>
+          <h1 className="ml-4 text-xl font-bold text-gray-800">
+            プロフィール編集
+          </h1>
+        </div>
+      </header>
 
-      <div style={{
-        padding: '20px',
-      }}>
-        {error && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '4px',
-            marginBottom: '20px',
-          }}>
-            {error}
-          </div>
-        )}
+      <main className="px-4 py-4">
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="pt-6">
+            {error && (
+              <div className="p-3 mb-5 bg-red-50 text-red-700 rounded text-sm">
+                {error}
+              </div>
+            )}
 
-        <form onSubmit={handleSubmit}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                名前 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  名前 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                性別 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <select
-                value={formData.gender}
-                onChange={(e) => handleInputChange('gender', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  性別 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={formData.gender}
+                  onChange={(e) => handleInputChange('gender', e.target.value)}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                >
+                  <option value="">選択してください</option>
+                  <option value="男">男</option>
+                  <option value="女">女</option>
+                  <option value="それ以外">それ以外</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  年齢 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.age}
+                  onChange={(e) => handleInputChange('age', parseInt(e.target.value))}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  電話番号 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone_number}
+                  onChange={(e) => handleInputChange('phone_number', e.target.value)}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  メールアドレス <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  ジャンル（カテゴリ）
+                </label>
+                <input
+                  type="text"
+                  value={formData.genre_category || ''}
+                  onChange={(e) => handleInputChange('genre_category', e.target.value || null)}
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  ジャンル（自由記述）
+                </label>
+                <textarea
+                  value={formData.genre_free_text || ''}
+                  onChange={(e) => handleInputChange('genre_free_text', e.target.value || null)}
+                  rows={3}
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={saving}
+                className="w-full bg-store hover:bg-store-dark"
               >
-                <option value="男">男</option>
-                <option value="女">女</option>
-                <option value="それ以外">それ以外</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                年齢 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="number"
-                value={formData.age}
-                onChange={(e) => handleInputChange('age', e.target.value)}
-                required
-                min="0"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                電話番号 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="tel"
-                value={formData.phoneNumber}
-                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                メールアドレス <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                ジャンル（カテゴリ）
-              </label>
-              <input
-                type="text"
-                value={formData.genreCategory}
-                onChange={(e) => handleInputChange('genreCategory', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                ジャンル（自由記述）
-              </label>
-              <textarea
-                value={formData.genreFreeText}
-                onChange={(e) => handleInputChange('genreFreeText', e.target.value)}
-                rows={4}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  fontFamily: 'inherit',
-                }}
-              />
-            </div>
-
-            <div style={{
-              marginTop: '30px',
-              paddingTop: '20px',
-              borderTop: '1px solid #e0e0e0',
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '16px',
-              }}>
-                書類画像（変更する場合のみ選択）
-              </h3>
-
-              <ImageUpload
-                label="営業許可証"
-                value={exhibitor.business_license_image_url}
-                onFileSelect={(file) => handleImageSelect('businessLicenseImage', file)}
-              />
-
-              <ImageUpload
-                label="車検証"
-                value={exhibitor.vehicle_inspection_image_url}
-                onFileSelect={(file) => handleImageSelect('vehicleInspectionImage', file)}
-              />
-
-              <ImageUpload
-                label="自賠責保険"
-                value={exhibitor.automobile_inspection_image_url}
-                onFileSelect={(file) => handleImageSelect('automobileInspectionImage', file)}
-              />
-
-              <ImageUpload
-                label="PL保険"
-                value={exhibitor.pl_insurance_image_url}
-                onFileSelect={(file) => handleImageSelect('plInsuranceImage', file)}
-              />
-
-              <ImageUpload
-                label="消防設備配置図"
-                value={exhibitor.fire_equipment_layout_image_url}
-                onFileSelect={(file) => handleImageSelect('fireEquipmentLayoutImage', file)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              style={{
-                width: '100%',
-                padding: '16px',
-                backgroundColor: '#5DABA8',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                marginTop: '20px',
-              }}
-            >
-              更新する
-            </button>
-          </div>
-        </form>
-      </div>
+                {saving ? '保存中...' : '保存する'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
-

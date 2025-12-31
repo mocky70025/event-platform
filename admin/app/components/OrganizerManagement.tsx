@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import LoadingSpinner from './LoadingSpinner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { StatusBadge } from '@/components/status-badge';
+import { cn } from '@/lib/utils';
 
 interface Organizer {
   id: string;
@@ -92,35 +96,21 @@ export default function OrganizerManagement({ onUpdate }: OrganizerManagementPro
 
   return (
     <div>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-      }}>
-        <h2 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-        }}>
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-2xl font-bold">
           主催者管理
         </h2>
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-        }}>
+        <div className="flex gap-2">
           {(['all', 'pending', 'approved'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: filter === f ? '#8B5CF6' : '#f0f0f0',
-                color: filter === f ? 'white' : '#333',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '14px',
-                cursor: 'pointer',
-              }}
+              className={cn(
+                'px-4 py-2 rounded text-sm font-medium transition-colors',
+                filter === f
+                  ? 'bg-admin text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              )}
             >
               {f === 'all' ? 'すべて' : f === 'pending' ? '承認待ち' : '承認済み'}
             </button>
@@ -128,109 +118,55 @@ export default function OrganizerManagement({ onUpdate }: OrganizerManagementPro
         </div>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gap: '16px',
-      }}>
+      <div className="space-y-4">
         {organizers.map((organizer) => (
-          <div
-            key={organizer.id}
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              padding: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-          >
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'start',
-              marginBottom: '12px',
-            }}>
-              <div>
-                <h3 style={{
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  marginBottom: '4px',
-                }}>
-                  {organizer.name}
-                </h3>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#666',
-                }}>
-                  {organizer.organization_name}
+          <Card key={organizer.id}>
+            <CardContent className="pt-6">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="text-lg font-bold mb-1">
+                    {organizer.name}
+                  </h3>
+                  <div className="text-sm text-gray-600">
+                    {organizer.organization_name}
+                  </div>
+                </div>
+                <StatusBadge
+                  status={organizer.is_approved ? 'approved' : 'pending'}
+                />
+              </div>
+
+              <div className="text-sm text-gray-600 mb-3">
+                <div>📧 {organizer.email}</div>
+                <div>📞 {organizer.phone_number}</div>
+                <div className="mt-1 text-xs text-gray-400">
+                  登録日: {new Date(organizer.created_at).toLocaleDateString('ja-JP')}
                 </div>
               </div>
-              <span style={{
-                padding: '4px 12px',
-                backgroundColor: organizer.is_approved ? '#10B981' : '#F59E0B',
-                color: 'white',
-                borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: '500',
-              }}>
-                {organizer.is_approved ? '承認済み' : '承認待ち'}
-              </span>
-            </div>
 
-            <div style={{
-              fontSize: '14px',
-              color: '#666',
-              marginBottom: '12px',
-            }}>
-              <div>📧 {organizer.email}</div>
-              <div>📞 {organizer.phone_number}</div>
-              <div style={{ marginTop: '4px', fontSize: '12px', color: '#999' }}>
-                登録日: {new Date(organizer.created_at).toLocaleDateString('ja-JP')}
-              </div>
-            </div>
-
-            {!organizer.is_approved && (
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-              }}>
-                <button
-                  onClick={() => handleApprove(organizer.id)}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#10B981',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  承認
-                </button>
-                <button
-                  onClick={() => handleReject(organizer.id)}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  却下
-                </button>
-              </div>
-            )}
-          </div>
+              {!organizer.is_approved && (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleApprove(organizer.id)}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    承認
+                  </Button>
+                  <Button
+                    onClick={() => handleReject(organizer.id)}
+                    variant="outline"
+                    className="flex-1 text-red-600 border-red-600 hover:bg-red-50"
+                  >
+                    却下
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ))}
 
         {organizers.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: '#999',
-          }}>
+          <div className="text-center py-10 text-gray-400">
             主催者が見つかりませんでした
           </div>
         )}
@@ -238,4 +174,3 @@ export default function OrganizerManagement({ onUpdate }: OrganizerManagementPro
     </div>
   );
 }
-

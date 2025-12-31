@@ -52,16 +52,8 @@ export default function ExhibitorManagement() {
 
   return (
     <div>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-      }}>
-        <h2 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-        }}>
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-2xl font-bold">
           出店者管理
         </h2>
         <input
@@ -69,115 +61,53 @@ export default function ExhibitorManagement() {
           placeholder="検索..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            padding: '8px 12px',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            fontSize: '14px',
-            width: '200px',
-          }}
+          className="px-3 py-2 border border-gray-300 rounded text-sm w-52 focus:outline-none focus:ring-2 focus:ring-admin focus:border-transparent"
         />
       </div>
 
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      }}>
-        <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-        }}>
-          <thead>
-            <tr style={{
-              backgroundColor: '#f9fafb',
-              borderBottom: '1px solid #e5e7eb',
-            }}>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#666',
-              }}>名前</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#666',
-              }}>性別</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#666',
-              }}>年齢</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#666',
-              }}>メール</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#666',
-              }}>ジャンル</th>
-              <th style={{
-                padding: '12px',
-                textAlign: 'left',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#666',
-              }}>登録日</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredExhibitors.map((exhibitor) => (
-              <tr
-                key={exhibitor.id}
-                style={{
-                  borderBottom: '1px solid #e5e7eb',
-                }}
-              >
-                <td style={{ padding: '12px', fontSize: '14px' }}>{exhibitor.name}</td>
-                <td style={{ padding: '12px', fontSize: '14px' }}>{exhibitor.gender}</td>
-                <td style={{ padding: '12px', fontSize: '14px' }}>{exhibitor.age}歳</td>
-                <td style={{ padding: '12px', fontSize: '14px' }}>{exhibitor.email}</td>
-                <td style={{ padding: '12px', fontSize: '14px' }}>{exhibitor.genre_category || '-'}</td>
-                <td style={{ padding: '12px', fontSize: '14px', color: '#666' }}>
-                  {new Date(exhibitor.created_at).toLocaleDateString('ja-JP')}
-                </td>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">名前</th>
+                <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">性別</th>
+                <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">年齢</th>
+                <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">メール</th>
+                <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">ジャンル</th>
+                <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">登録日</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredExhibitors.map((exhibitor) => (
+                <tr
+                  key={exhibitor.id}
+                  className="border-b border-gray-200 hover:bg-gray-50"
+                >
+                  <td className="px-3 py-3 text-sm">{exhibitor.name}</td>
+                  <td className="px-3 py-3 text-sm">{exhibitor.gender}</td>
+                  <td className="px-3 py-3 text-sm">{exhibitor.age}歳</td>
+                  <td className="px-3 py-3 text-sm">{exhibitor.email}</td>
+                  <td className="px-3 py-3 text-sm">{exhibitor.genre_category || '-'}</td>
+                  <td className="px-3 py-3 text-sm text-gray-600">
+                    {new Date(exhibitor.created_at).toLocaleDateString('ja-JP')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-        {filteredExhibitors.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: '#999',
-          }}>
-            {searchTerm ? '検索結果が見つかりませんでした' : '出店者が見つかりませんでした'}
-          </div>
-        )}
+          {filteredExhibitors.length === 0 && (
+            <div className="text-center py-10 text-gray-400">
+              {searchTerm ? '検索結果が見つかりませんでした' : '出店者が見つかりませんでした'}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div style={{
-        marginTop: '16px',
-        fontSize: '14px',
-        color: '#666',
-      }}>
+      <div className="mt-4 text-sm text-gray-600">
         合計: {filteredExhibitors.length}件
       </div>
     </div>
   );
 }
-

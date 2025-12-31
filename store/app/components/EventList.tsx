@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import EventCard from './EventCard';
-import LoadingSpinner from './LoadingSpinner';
+import { EventCard } from '@/components/event-card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Search, X } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -11,58 +14,57 @@ interface Event {
   event_start_date: string;
   event_end_date: string;
   venue_name: string;
-  venue_city?: string;
-  venue_town?: string;
-  main_image_url?: string;
-  lead_text?: string;
-  genre?: string;
-  application_start_date?: string;
-  application_end_date?: string;
+  venue_address: string;
+  main_image_url: string | null;
+  approval_status: string;
+  recruitment_count: number | null;
+  genre_category: string | null;
+}
+
+interface SearchFilters {
+  keyword: string;
+  startDate: string;
+  endDate: string;
+  prefecture: string;
+  city: string;
+  genre: string;
 }
 
 export default function EventList() {
+  const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [searchStartDate, setSearchStartDate] = useState('');
-  const [searchEndDate, setSearchEndDate] = useState('');
-  const [searchPrefecture, setSearchPrefecture] = useState('');
-  const [searchCity, setSearchCity] = useState('');
-  const [searchGenre, setSearchGenre] = useState('');
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [filters, setFilters] = useState<SearchFilters>({
+    keyword: '',
+    startDate: '',
+    endDate: '',
+    prefecture: '',
+    city: '',
+    genre: '',
+  });
 
   useEffect(() => {
-    loadEvents();
+    fetchEvents();
   }, []);
 
   useEffect(() => {
     filterEvents();
-  }, [events, searchKeyword, searchStartDate, searchEndDate, searchPrefecture, searchCity, searchGenre]);
+  }, [events, filters]);
 
-  const loadEvents = async () => {
+  const fetchEvents = async () => {
     try {
-      setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
-
-      let query = supabase
+      const { data, error } = await supabase
         .from('events')
         .select('*')
-        .gte('application_end_date', today)
+        .eq('approval_status', 'approved')
         .order('event_start_date', { ascending: true });
 
-      const { data, error: queryError } = await query;
-
-      if (queryError) {
-        throw queryError;
-      }
-
+      if (error) throw error;
       setEvents(data || []);
       setFilteredEvents(data || []);
-    } catch (err: any) {
-      console.error('Error loading events:', err);
-      setError(err.message || 'イベントの読み込みに失敗しました');
+    } catch (error) {
+      console.error('イベント取得エラー:', error);
     } finally {
       setLoading(false);
     }
@@ -71,362 +73,205 @@ export default function EventList() {
   const filterEvents = () => {
     let filtered = [...events];
 
-    if (searchKeyword) {
-      filtered = filtered.filter(event =>
-        event.event_name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-        event.lead_text?.toLowerCase().includes(searchKeyword.toLowerCase())
+    // キーワード検索
+    if (filters.keyword) {
+      filtered = filtered.filter(
+        (event) =>
+          event.event_name.toLowerCase().includes(filters.keyword.toLowerCase()) ||
+          event.venue_name.toLowerCase().includes(filters.keyword.toLowerCase())
       );
     }
 
-    if (searchStartDate) {
-      filtered = filtered.filter(event =>
-        event.event_start_date >= searchStartDate
+    // 開始日フィルター
+    if (filters.startDate) {
+      filtered = filtered.filter(
+        (event) => new Date(event.event_start_date) >= new Date(filters.startDate)
       );
     }
 
-    if (searchEndDate) {
-      filtered = filtered.filter(event =>
-        event.event_end_date <= searchEndDate
+    // 終了日フィルター
+    if (filters.endDate) {
+      filtered = filtered.filter(
+        (event) => new Date(event.event_end_date) <= new Date(filters.endDate)
       );
     }
 
-    if (searchPrefecture) {
-      filtered = filtered.filter(event =>
-        event.venue_city?.includes(searchPrefecture)
+    // 都道府県フィルター
+    if (filters.prefecture) {
+      filtered = filtered.filter((event) =>
+        event.venue_address?.includes(filters.prefecture)
       );
     }
 
-    if (searchCity) {
-      filtered = filtered.filter(event =>
-        event.venue_town?.includes(searchCity) ||
-        event.venue_city?.includes(searchCity)
+    // 市区町村フィルター
+    if (filters.city) {
+      filtered = filtered.filter((event) =>
+        event.venue_address?.toLowerCase().includes(filters.city.toLowerCase())
       );
     }
 
-    if (searchGenre) {
-      filtered = filtered.filter(event =>
-        event.genre?.includes(searchGenre)
+    // ジャンルフィルター
+    if (filters.genre) {
+      filtered = filtered.filter((event) =>
+        event.genre_category?.toLowerCase().includes(filters.genre.toLowerCase())
       );
     }
 
     setFilteredEvents(filtered);
   };
 
-  const handleEventClick = (event: Event) => {
-    setSelectedEvent(event);
+  const clearFilters = () => {
+    setFilters({
+      keyword: '',
+      startDate: '',
+      endDate: '',
+      prefecture: '',
+      city: '',
+      genre: '',
+    });
   };
 
-  const handleApply = async (eventId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert('ログインが必要です');
-        return;
-      }
-
-      // 出店者情報を取得
-      const { data: exhibitor } = await supabase
-        .from('exhibitors')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!exhibitor) {
-        alert('出店者情報が登録されていません');
-        return;
-      }
-
-      // 申し込みを作成
-      const { error } = await supabase
-        .from('event_applications')
-        .insert({
-          exhibitor_id: exhibitor.id,
-          event_id: eventId,
-          application_status: 'pending',
-        });
-
-      if (error) throw error;
-
-      alert('申し込みが完了しました');
-      setSelectedEvent(null);
-      loadEvents();
-    } catch (err: any) {
-      alert(err.message || '申し込みに失敗しました');
-    }
+  const formatDateRange = (start: string, end: string) => {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const startStr = `${startDate.getMonth() + 1}/${startDate.getDate()}`;
+    const endStr = `${endDate.getMonth() + 1}/${endDate.getDate()}`;
+    return `${startStr} - ${endStr}`;
   };
+
+  const hasActiveFilters = Object.values(filters).some((value) => value !== '');
 
   if (loading) {
     return (
-      <div style={{ padding: '20px' }}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (selectedEvent) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        padding: '20px',
-      }}>
-        <button
-          onClick={() => setSelectedEvent(null)}
-          style={{
-            marginBottom: '20px',
-            padding: '8px 16px',
-            backgroundColor: '#f0f0f0',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          ← 戻る
-        </button>
-
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        }}>
-          {selectedEvent.main_image_url && (
-            <img
-              src={selectedEvent.main_image_url}
-              alt={selectedEvent.event_name}
-              style={{
-                width: '100%',
-                maxHeight: '300px',
-                objectFit: 'cover',
-                borderRadius: '8px',
-                marginBottom: '20px',
-              }}
-            />
-          )}
-
-          <h1 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            marginBottom: '16px',
-          }}>
-            {selectedEvent.event_name}
-          </h1>
-
-          <div style={{
-            fontSize: '16px',
-            color: '#666',
-            marginBottom: '20px',
-            lineHeight: '1.6',
-          }}>
-            <div style={{ marginBottom: '8px' }}>
-              📅 {new Date(selectedEvent.event_start_date).toLocaleDateString('ja-JP')} - {new Date(selectedEvent.event_end_date).toLocaleDateString('ja-JP')}
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              📍 {selectedEvent.venue_name}
-              {selectedEvent.venue_city && ` (${selectedEvent.venue_city})`}
-            </div>
-            {selectedEvent.genre && (
-              <div style={{ marginBottom: '8px' }}>
-                🏷️ {selectedEvent.genre}
-              </div>
-            )}
-          </div>
-
-          {selectedEvent.lead_text && (
-            <div style={{
-              fontSize: '16px',
-              lineHeight: '1.6',
-              marginBottom: '20px',
-              padding: '16px',
-              backgroundColor: '#f9f9f9',
-              borderRadius: '8px',
-            }}>
-              {selectedEvent.lead_text}
-            </div>
-          )}
-
-          <button
-            onClick={() => handleApply(selectedEvent.id)}
-            style={{
-              width: '100%',
-              padding: '16px',
-              backgroundColor: '#5DABA8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-            }}
-          >
-            このイベントに申し込む
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600">読み込み中...</div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      paddingBottom: '80px',
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '16px',
-        borderBottom: '1px solid #e0e0e0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
-        <h1 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-          marginBottom: '16px',
-        }}>
-          イベント検索
-        </h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* 検索ヘッダー */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="px-4 py-4">
+          <h1 className="text-xl font-bold text-gray-800 mb-4">イベント検索</h1>
 
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-        }}>
-          <input
-            type="text"
-            placeholder="キーワード検索"
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '16px',
-            }}
-          />
+          {/* 検索フォーム */}
+          <Card>
+            <CardContent className="pt-4 space-y-3">
+              {/* キーワード検索 */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="イベント名、会場名で検索"
+                  value={filters.keyword}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, keyword: e.target.value }))
+                  }
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '8px',
-          }}>
-            <input
-              type="date"
-              value={searchStartDate}
-              onChange={(e) => setSearchStartDate(e.target.value)}
-              style={{
-                padding: '12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-              }}
-            />
-            <input
-              type="date"
-              value={searchEndDate}
-              onChange={(e) => setSearchEndDate(e.target.value)}
-              style={{
-                padding: '12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-              }}
-            />
-          </div>
+              {/* 日付範囲 */}
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+                <input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
 
-          <input
-            type="text"
-            placeholder="都道府県"
-            value={searchPrefecture}
-            onChange={(e) => setSearchPrefecture(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '16px',
-            }}
-          />
+              {/* 都道府県・市区町村 */}
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="都道府県"
+                  value={filters.prefecture}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, prefecture: e.target.value }))
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  placeholder="市区町村"
+                  value={filters.city}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, city: e.target.value }))
+                  }
+                  className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                />
+              </div>
 
-          <input
-            type="text"
-            placeholder="市区町村"
-            value={searchCity}
-            onChange={(e) => setSearchCity(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '16px',
-            }}
-          />
+              {/* ジャンル */}
+              <input
+                type="text"
+                placeholder="ジャンル"
+                value={filters.genre}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, genre: e.target.value }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+              />
 
-          <input
-            type="text"
-            placeholder="ジャンル"
-            value={searchGenre}
-            onChange={(e) => setSearchGenre(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '16px',
-            }}
-          />
+              {/* フィルタークリア */}
+              {hasActiveFilters && (
+                <Button
+                  onClick={clearFilters}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  フィルターをクリア
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 結果件数 */}
+          <p className="mt-3 text-sm text-gray-600">
+            {filteredEvents.length}件のイベントが見つかりました
+          </p>
         </div>
-      </div>
+      </header>
 
-      <div style={{
-        padding: '20px',
-      }}>
-        {error && (
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '8px',
-            marginBottom: '16px',
-          }}>
-            {error}
-          </div>
-        )}
-
+      {/* イベント一覧 */}
+      <main className="px-4 py-4">
         {filteredEvents.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px 20px',
-            color: '#999',
-          }}>
-            <div style={{
-              fontSize: '48px',
-              marginBottom: '16px',
-            }}>🔍</div>
-            <div style={{
-              fontSize: '16px',
-            }}>
-              条件に一致するイベントが見つかりませんでした
-            </div>
+          <div className="text-center py-12">
+            <p className="text-gray-500">条件に一致するイベントが見つかりませんでした</p>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gap: '16px',
-          }}>
+          <div className="space-y-4">
             {filteredEvents.map((event) => (
               <EventCard
                 key={event.id}
-                event={event}
-                onClick={() => handleEventClick(event)}
+                title={event.event_name}
+                date={formatDateRange(event.event_start_date, event.event_end_date)}
+                location={event.venue_name}
+                capacity={event.recruitment_count || undefined}
+                image={event.main_image_url || undefined}
+                status={event.approval_status as any}
+                accent="store"
+                onClick={() => router.push(`/events/${event.id}`)}
               />
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
-

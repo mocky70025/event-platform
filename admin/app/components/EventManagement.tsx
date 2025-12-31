@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import LoadingSpinner from './LoadingSpinner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { StatusBadge } from '@/components/status-badge';
+import { cn } from '@/lib/utils';
 
 interface Event {
   id: string;
@@ -85,35 +89,21 @@ export default function EventManagement({ onUpdate }: EventManagementProps) {
 
   return (
     <div>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-      }}>
-        <h2 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-        }}>
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-2xl font-bold">
           イベント管理
         </h2>
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-        }}>
+        <div className="flex gap-2">
           {(['all', 'pending', 'approved'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: filter === f ? '#3B82F6' : '#f0f0f0',
-                color: filter === f ? 'white' : '#333',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '14px',
-                cursor: 'pointer',
-              }}
+              className={cn(
+                'px-4 py-2 rounded text-sm font-medium transition-colors',
+                filter === f
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              )}
             >
               {f === 'all' ? 'すべて' : f === 'pending' ? '承認待ち' : '承認済み'}
             </button>
@@ -121,92 +111,48 @@ export default function EventManagement({ onUpdate }: EventManagementProps) {
         </div>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gap: '16px',
-      }}>
+      <div className="space-y-4">
         {events.map((event) => (
-          <div
-            key={event.id}
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              padding: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-          >
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'start',
-              marginBottom: '12px',
-            }}>
-              <div>
-                <h3 style={{
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  marginBottom: '4px',
-                }}>
-                  {event.event_name}
-                </h3>
-                {event.organizer && (
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#666',
-                  }}>
-                    主催者: {event.organizer.name} ({event.organizer.organization_name})
-                  </div>
-                )}
+          <Card key={event.id}>
+            <CardContent className="pt-6">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="text-lg font-bold mb-1">
+                    {event.event_name}
+                  </h3>
+                  {event.organizer && (
+                    <div className="text-sm text-gray-600">
+                      主催者: {event.organizer.name} ({event.organizer.organization_name})
+                    </div>
+                  )}
+                </div>
+                <StatusBadge
+                  status={event.approval_status === 'approved' ? 'approved' : 'pending'}
+                />
               </div>
-              <span style={{
-                padding: '4px 12px',
-                backgroundColor: event.approval_status === 'approved' ? '#10B981' : '#F59E0B',
-                color: 'white',
-                borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: '500',
-              }}>
-                {event.approval_status === 'approved' ? '承認済み' : '承認待ち'}
-              </span>
-            </div>
 
-            <div style={{
-              fontSize: '14px',
-              color: '#666',
-              marginBottom: '12px',
-            }}>
-              <div>📅 {new Date(event.event_start_date).toLocaleDateString('ja-JP')} - {new Date(event.event_end_date).toLocaleDateString('ja-JP')}</div>
-              <div>📍 {event.venue_name}</div>
-              <div style={{ marginTop: '4px', fontSize: '12px', color: '#999' }}>
-                作成日: {new Date(event.created_at).toLocaleDateString('ja-JP')}
+              <div className="text-sm text-gray-600 mb-3">
+                <div>📅 {new Date(event.event_start_date).toLocaleDateString('ja-JP')} - {new Date(event.event_end_date).toLocaleDateString('ja-JP')}</div>
+                <div>📍 {event.venue_name}</div>
+                <div className="mt-1 text-xs text-gray-400">
+                  作成日: {new Date(event.created_at).toLocaleDateString('ja-JP')}
+                </div>
               </div>
-            </div>
 
-            {event.approval_status !== 'approved' && (
-              <button
-                onClick={() => handleApprove(event.id)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#10B981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                }}
-              >
-                承認
-              </button>
-            )}
-          </div>
+              {event.approval_status !== 'approved' && (
+                <Button
+                  onClick={() => handleApprove(event.id)}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  承認
+                </Button>
+              )}
+            </CardContent>
+          </Card>
         ))}
 
         {events.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: '#999',
-          }}>
+          <div className="text-center py-10 text-gray-400">
             イベントが見つかりませんでした
           </div>
         )}
@@ -214,4 +160,3 @@ export default function EventManagement({ onUpdate }: EventManagementProps) {
     </div>
   );
 }
-

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import ProgressBar from './ProgressBar';
 import LoadingSpinner from './LoadingSpinner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface FormData {
   name: string;
@@ -26,8 +28,25 @@ export default function RegistrationForm() {
     email: '',
   });
 
+  useEffect(() => {
+    const saved = sessionStorage.getItem('organizer_draft');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setFormData(prev => ({ ...prev, ...parsed }));
+      } catch (e) {
+        console.error('Failed to load draft:', e);
+      }
+    }
+  }, []);
+
+  const saveDraft = () => {
+    sessionStorage.setItem('organizer_draft', JSON.stringify(formData));
+  };
+
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    saveDraft();
   };
 
   const validateStep1 = () => {
@@ -40,8 +59,10 @@ export default function RegistrationForm() {
 
   const handleNext = () => {
     setError('');
-    if (validateStep1()) {
-      setCurrentStep(2);
+    if (currentStep === 1) {
+      if (validateStep1()) {
+        setCurrentStep(2);
+      }
     }
   };
 
@@ -62,7 +83,6 @@ export default function RegistrationForm() {
         throw new Error('認証されていません');
       }
 
-      // 主催者情報を保存
       const { error: insertError } = await supabase
         .from('organizers')
         .insert({
@@ -76,6 +96,7 @@ export default function RegistrationForm() {
 
       if (insertError) throw insertError;
 
+      sessionStorage.removeItem('organizer_draft');
       router.push('/');
     } catch (err: any) {
       setError(err.message || '登録に失敗しました');
@@ -86,296 +107,147 @@ export default function RegistrationForm() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      padding: '20px',
-      backgroundColor: '#f5f5f5',
-    }}>
-      <div style={{
-        maxWidth: '600px',
-        margin: '0 auto',
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '30px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      }}>
-        <h1 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-          marginBottom: '20px',
-          textAlign: 'center',
-        }}>
-          主催者情報登録
-        </h1>
+    <div className="min-h-screen p-5 bg-gray-50">
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <h1 className="text-2xl font-bold mb-5 text-center">
+            主催者情報登録
+          </h1>
 
-        <ProgressBar currentStep={currentStep} totalSteps={2} />
+          <ProgressBar currentStep={currentStep} totalSteps={2} />
 
-        {error && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '4px',
-            marginBottom: '20px',
-            fontSize: '14px',
-          }}>
-            {error}
-          </div>
-        )}
-
-        {/* ステップ1: 基本情報 */}
-        {currentStep === 1 && (
-          <div>
-            <h2 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              marginBottom: '20px',
-            }}>
-              基本情報
-            </h2>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                名前 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
+          {error && (
+            <div className="p-3 mb-5 bg-red-50 text-red-700 rounded text-sm">
+              {error}
             </div>
+          )}
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                組織名 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.organizationName}
-                onChange={(e) => handleInputChange('organizationName', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+          {/* ステップ1: 基本情報 */}
+          {currentStep === 1 && (
+            <div>
+              <h2 className="text-lg font-bold mb-5">基本情報</h2>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                電話番号 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="tel"
-                value={formData.phoneNumber}
-                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    名前 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    required
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                  />
+                </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                メールアドレス <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
-          </div>
-        )}
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    組織名 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.organizationName}
+                    onChange={(e) => handleInputChange('organizationName', e.target.value)}
+                    required
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                  />
+                </div>
 
-        {/* ステップ2: 利用規約確認 */}
-        {currentStep === 2 && (
-          <div>
-            <h2 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              marginBottom: '20px',
-            }}>
-              利用規約確認
-            </h2>
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    電話番号 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                    required
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                  />
+                </div>
 
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#f9f9f9',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              maxHeight: '400px',
-              overflowY: 'auto',
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '12px',
-              }}>
-                利用規約
-              </h3>
-              <div style={{
-                fontSize: '14px',
-                lineHeight: '1.6',
-                color: '#666',
-              }}>
-                <p style={{ marginBottom: '12px' }}>
-                  本サービスをご利用いただくにあたり、以下の利用規約に同意していただく必要があります。
-                </p>
-                <p style={{ marginBottom: '12px' }}>
-                  1. 主催者は、提供する情報が正確であることを保証します。
-                </p>
-                <p style={{ marginBottom: '12px' }}>
-                  2. 主催者は、イベント情報を適切に管理する責任があります。
-                </p>
-                <p style={{ marginBottom: '12px' }}>
-                  3. 主催者は、出店者の申請を承認または却下する権利を有します。
-                </p>
-                <p style={{ marginBottom: '12px' }}>
-                  4. 個人情報は適切に管理され、本サービスの目的のみに使用されます。
-                </p>
+                <div>
+                  <label className="block mb-2 text-sm font-medium">
+                    メールアドレス <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    required
+                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
+          )}
 
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '20px',
-              cursor: 'pointer',
-            }}>
-              <input
-                type="checkbox"
-                required
-                style={{
-                  marginRight: '8px',
-                  width: '20px',
-                  height: '20px',
-                }}
-              />
-              <span style={{ fontSize: '14px' }}>
-                利用規約に同意します <span style={{ color: '#e74c3c' }}>*</span>
-              </span>
-            </label>
+          {/* ステップ2: 利用規約確認 */}
+          {currentStep === 2 && (
+            <div>
+              <h2 className="text-lg font-bold mb-5">利用規約確認</h2>
+
+              <div className="p-5 bg-gray-100 rounded-lg mb-5 max-h-96 overflow-y-auto">
+                <h3 className="text-base font-bold mb-3">利用規約</h3>
+                <div className="text-sm leading-relaxed text-gray-600 space-y-3">
+                  <p>本サービスをご利用いただくにあたり、以下の利用規約に同意していただく必要があります。</p>
+                  <p>1. 主催者は、提供する情報が正確であることを保証します。</p>
+                  <p>2. 主催者は、イベント情報を適切に管理する責任があります。</p>
+                  <p>3. 主催者は、出店者の申請を公平に審査する義務があります。</p>
+                  <p>4. 個人情報は適切に管理され、本サービスの目的のみに使用されます。</p>
+                  <p>5. 管理者による承認後、イベントを作成できるようになります。</p>
+                </div>
+              </div>
+
+              <label className="flex items-center mb-5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  required
+                  className="w-5 h-5 mr-2"
+                />
+                <span className="text-sm">
+                  利用規約に同意します <span className="text-red-600">*</span>
+                </span>
+              </label>
+            </div>
+          )}
+
+          <div className="flex gap-3 mt-8">
+            {currentStep > 1 && (
+              <Button
+                onClick={handleBack}
+                variant="secondary"
+                className="flex-1"
+              >
+                戻る
+              </Button>
+            )}
+            {currentStep < 2 ? (
+              <Button
+                onClick={handleNext}
+                className="flex-1 bg-organizer hover:bg-organizer-dark"
+              >
+                次へ
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                className="flex-1 bg-organizer hover:bg-organizer-dark"
+              >
+                登録する
+              </Button>
+            )}
           </div>
-        )}
-
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginTop: '30px',
-        }}>
-          {currentStep > 1 && (
-            <button
-              onClick={handleBack}
-              style={{
-                flex: 1,
-                padding: '12px',
-                backgroundColor: '#f0f0f0',
-                color: '#333',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: 'pointer',
-              }}
-            >
-              戻る
-            </button>
-          )}
-          {currentStep < 2 ? (
-            <button
-              onClick={handleNext}
-              style={{
-                flex: 1,
-                padding: '12px',
-                backgroundColor: '#FF6B35',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
-            >
-              次へ
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              style={{
-                flex: 1,
-                padding: '12px',
-                backgroundColor: '#FF6B35',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
-            >
-              登録する
-            </button>
-          )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

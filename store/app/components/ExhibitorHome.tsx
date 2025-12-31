@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import EventCard from './EventCard';
-import LoadingSpinner from './LoadingSpinner';
+import { EventCard } from '@/components/event-card';
+import { Bell, History, Search, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Event {
   id: string;
@@ -11,166 +13,161 @@ interface Event {
   event_start_date: string;
   event_end_date: string;
   venue_name: string;
-  venue_city?: string;
-  main_image_url?: string;
-  lead_text?: string;
-  application_start_date?: string;
-  application_end_date?: string;
+  main_image_url: string | null;
+  approval_status: string;
+  recruitment_count: number | null;
 }
 
 export default function ExhibitorHome() {
+  const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('home');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    loadEvents();
+    fetchEvents();
+    fetchUnreadNotifications();
   }, []);
 
-  const loadEvents = async () => {
+  const fetchEvents = async () => {
     try {
-      setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
-
-      // 承認済みで、申し込み期間内のイベントを取得
-      let query = supabase
+      const { data, error } = await supabase
         .from('events')
         .select('*')
-        .or(`approval_status.eq.approved,approval_status.is.null`)
-        .gte('application_end_date', today)
+        .eq('approval_status', 'approved')
         .order('event_start_date', { ascending: true });
 
-      const { data, error: queryError } = await query;
-
-      if (queryError) {
-        // approval_statusカラムが存在しない場合のエラーハンドリング
-        if (queryError.code === 'PGRST116' || queryError.message.includes('column')) {
-          // approval_statusカラムがない場合は、すべてのイベントを取得
-          const { data: allData, error: allError } = await supabase
-            .from('events')
-            .select('*')
-            .gte('application_end_date', today)
-            .order('event_start_date', { ascending: true });
-
-          if (allError) throw allError;
-          setEvents(allData || []);
-        } else {
-          throw queryError;
-        }
-      } else {
-        setEvents(data || []);
-      }
-    } catch (err: any) {
-      console.error('Error loading events:', err);
-      setError(err.message || 'イベントの読み込みに失敗しました');
+      if (error) throw error;
+      setEvents(data || []);
+    } catch (error) {
+      console.error('イベント取得エラー:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEventClick = (eventId: string) => {
-    window.location.href = `/event/${eventId}`;
+  const fetchUnreadNotifications = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+
+      if (error) throw error;
+      setUnreadCount(count || 0);
+    } catch (error) {
+      console.error('通知取得エラー:', error);
+    }
+  };
+
+  const formatDateRange = (start: string, end: string) => {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const startStr = `${startDate.getMonth() + 1}/${startDate.getDate()}`;
+    const endStr = `${endDate.getMonth() + 1}/${endDate.getDate()}`;
+    return `${startStr} - ${endStr}`;
   };
 
   if (loading) {
     return (
-      <div style={{ padding: '20px' }}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-      }}>
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#fee',
-          color: '#c33',
-          borderRadius: '8px',
-          marginBottom: '16px',
-        }}>
-          {error}
-        </div>
-        <button
-          onClick={loadEvents}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: '#5DABA8',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '16px',
-            cursor: 'pointer',
-          }}
-        >
-          再読み込み
-        </button>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600">読み込み中...</div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      paddingBottom: '80px',
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '16px',
-        borderBottom: '1px solid #e0e0e0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
-        <h1 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-          color: '#333',
-        }}>
-          マイイベント
-        </h1>
-      </div>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* ヘッダー */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="px-4 py-4">
+          <h1 className="text-xl font-bold text-gray-800">イベント一覧</h1>
+        </div>
+      </header>
 
-      <div style={{
-        padding: '20px',
-      }}>
+      {/* メインコンテンツ */}
+      <main className="px-4 py-4">
         {events.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px 20px',
-            color: '#999',
-          }}>
-            <div style={{
-              fontSize: '48px',
-              marginBottom: '16px',
-            }}>📅</div>
-            <div style={{
-              fontSize: '16px',
-            }}>
-              現在、申し込み可能なイベントはありません
-            </div>
+          <div className="text-center py-12">
+            <p className="text-gray-500">現在、申し込み可能なイベントはありません</p>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gap: '16px',
-          }}>
+          <div className="space-y-4">
             {events.map((event) => (
               <EventCard
                 key={event.id}
-                event={event}
-                onClick={() => handleEventClick(event.id)}
+                title={event.event_name}
+                date={formatDateRange(event.event_start_date, event.event_end_date)}
+                location={event.venue_name}
+                capacity={event.recruitment_count || undefined}
+                image={event.main_image_url || undefined}
+                status={event.approval_status as any}
+                accent="store"
+                onClick={() => router.push(`/events/${event.id}`)}
               />
             ))}
           </div>
         )}
-      </div>
+      </main>
+
+      {/* ボトムナビゲーション */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
+        <div className="flex items-center justify-around h-16">
+          <button
+            onClick={() => setActiveTab('notifications')}
+            className={cn(
+              'flex flex-col items-center justify-center flex-1 h-full transition-colors relative',
+              activeTab === 'notifications' ? 'text-store' : 'text-gray-500'
+            )}
+          >
+            <Bell className="h-6 w-6" />
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-[calc(50%-8px)] bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+            <span className="text-xs mt-1">通知</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('history')}
+            className={cn(
+              'flex flex-col items-center justify-center flex-1 h-full transition-colors',
+              activeTab === 'history' ? 'text-store' : 'text-gray-500'
+            )}
+          >
+            <History className="h-6 w-6" />
+            <span className="text-xs mt-1">履歴</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('search')}
+            className={cn(
+              'flex flex-col items-center justify-center flex-1 h-full transition-colors',
+              activeTab === 'search' ? 'text-store' : 'text-gray-500'
+            )}
+          >
+            <Search className="h-6 w-6" />
+            <span className="text-xs mt-1">検索</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={cn(
+              'flex flex-col items-center justify-center flex-1 h-full transition-colors',
+              activeTab === 'profile' ? 'text-store' : 'text-gray-500'
+            )}
+          >
+            <User className="h-6 w-6" />
+            <span className="text-xs mt-1">プロフィール</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
-

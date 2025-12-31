@@ -7,6 +7,9 @@ import OrganizerManagement from './OrganizerManagement';
 import ExhibitorManagement from './ExhibitorManagement';
 import EventManagement from './EventManagement';
 import Statistics from './Statistics';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type View = 'dashboard' | 'organizers' | 'exhibitors' | 'events' | 'statistics';
 
@@ -106,60 +109,28 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-    }}>
+    <div className="min-h-screen bg-gray-50">
       {/* ヘッダー */}
-      <div style={{
-        backgroundColor: '#8B5CF6',
-        color: 'white',
-        padding: '16px 20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      }}>
-        <h1 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-        }}>
+      <div className="bg-admin text-white px-5 py-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
+        <h1 className="text-xl font-bold">
           管理者ダッシュボード
         </h1>
-        <button
+        <Button
           onClick={loadStatistics}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '14px',
-            cursor: 'pointer',
-          }}
+          size="sm"
+          variant="ghost"
+          className="text-white hover:bg-white/20"
         >
-          🔄 更新
-        </button>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          更新
+        </Button>
       </div>
 
-      {/* サイドバー */}
-      <div style={{
-        display: 'flex',
-        minHeight: 'calc(100vh - 60px)',
-      }}>
-        <div style={{
-          width: '200px',
-          backgroundColor: 'white',
-          borderRight: '1px solid #e0e0e0',
-          padding: '20px 0',
-        }}>
-          <nav style={{
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
+      {/* サイドバー & コンテンツ */}
+      <div className="flex min-h-[calc(100vh-60px)]">
+        {/* サイドバー */}
+        <div className="w-52 bg-white border-r border-gray-200 py-5">
+          <nav className="flex flex-col">
             {[
               { id: 'dashboard', label: '📊 ダッシュボード', count: null },
               { id: 'organizers', label: '👥 主催者管理', count: stats.organizers.pending },
@@ -169,28 +140,16 @@ export default function Dashboard() {
               <button
                 key={item.id}
                 onClick={() => setCurrentView(item.id as View)}
-                style={{
-                  padding: '12px 20px',
-                  border: 'none',
-                  backgroundColor: currentView === item.id ? '#f3f0ff' : 'transparent',
-                  color: currentView === item.id ? '#8B5CF6' : '#333',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
+                className={cn(
+                  'px-5 py-3 border-0 text-left text-sm flex justify-between items-center transition-colors',
+                  currentView === item.id
+                    ? 'bg-blue-50 text-admin font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                )}
               >
                 <span>{item.label}</span>
                 {item.count !== null && item.count > 0 && (
-                  <span style={{
-                    backgroundColor: '#ef4444',
-                    color: 'white',
-                    borderRadius: '10px',
-                    padding: '2px 8px',
-                    fontSize: '12px',
-                  }}>
+                  <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-medium">
                     {item.count}
                   </span>
                 )}
@@ -200,14 +159,10 @@ export default function Dashboard() {
         </div>
 
         {/* メインコンテンツ */}
-        <div style={{
-          flex: 1,
-          padding: '20px',
-        }}>
+        <div className="flex-1 p-5">
           {renderContent()}
         </div>
       </div>
     </div>
   );
 }
-

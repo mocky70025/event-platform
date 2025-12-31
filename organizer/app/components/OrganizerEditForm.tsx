@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 
-interface Organizer {
+interface OrganizerData {
   id: string;
   name: string;
   organization_name: string;
@@ -12,237 +17,175 @@ interface Organizer {
   email: string;
 }
 
-interface OrganizerEditFormProps {
-  organizer: Organizer;
-  onComplete: () => void;
-  onCancel: () => void;
-}
-
-export default function OrganizerEditForm({
-  organizer,
-  onComplete,
-  onCancel,
-}: OrganizerEditFormProps) {
-  const [loading, setLoading] = useState(false);
+export default function OrganizerEditForm() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [formData, setFormData] = useState({
-    name: organizer.name,
-    organizationName: organizer.organization_name,
-    phoneNumber: organizer.phone_number,
-    email: organizer.email,
+  const [formData, setFormData] = useState<OrganizerData>({
+    id: '',
+    name: '',
+    organization_name: '',
+    phone_number: '',
+    email: '',
   });
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  useEffect(() => {
+    fetchOrganizerData();
+  }, []);
+
+  const fetchOrganizerData = async () => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        router.push('/');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('organizers')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      setFormData(data);
+    } catch (error) {
+      console.error('主催者情報取得エラー:', error);
+      setError('情報の取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof OrganizerData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setSaving(true);
 
     try {
       const { error: updateError } = await supabase
         .from('organizers')
         .update({
           name: formData.name,
-          organization_name: formData.organizationName,
-          phone_number: formData.phoneNumber,
+          organization_name: formData.organization_name,
+          phone_number: formData.phone_number,
           email: formData.email,
         })
-        .eq('id', organizer.id);
+        .eq('id', formData.id);
 
       if (updateError) throw updateError;
 
-      onComplete();
+      alert('プロフィールを更新しました');
+      router.push('/profile');
     } catch (err: any) {
       setError(err.message || '更新に失敗しました');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <LoadingSpinner />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      paddingBottom: '80px',
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '16px',
-        borderBottom: '1px solid #e0e0e0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        <h1 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-        }}>
-          プロフィール編集
-        </h1>
-        <button
-          onClick={onCancel}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#f0f0f0',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '14px',
-            cursor: 'pointer',
-          }}
-        >
-          キャンセル
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-50 pb-8">
+      {/* ヘッダー */}
+      <header className="bg-white border-b border-gray-200">
+        <div className="px-4 py-4 flex items-center">
+          <Button
+            onClick={() => router.push('/profile')}
+            variant="ghost"
+            size="sm"
+            className="text-gray-600"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            戻る
+          </Button>
+          <h1 className="ml-4 text-xl font-bold text-gray-800">
+            プロフィール編集
+          </h1>
+        </div>
+      </header>
 
-      <div style={{
-        padding: '20px',
-      }}>
-        {error && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '4px',
-            marginBottom: '20px',
-          }}>
-            {error}
-          </div>
-        )}
+      <main className="px-4 py-4">
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="pt-6">
+            {error && (
+              <div className="p-3 mb-5 bg-red-50 text-red-700 rounded text-sm">
+                {error}
+              </div>
+            )}
 
-        <form onSubmit={handleSubmit}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                名前 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  名前 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                />
+              </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                組織名 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.organizationName}
-                onChange={(e) => handleInputChange('organizationName', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  組織名 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.organization_name}
+                  onChange={(e) => handleInputChange('organization_name', e.target.value)}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                />
+              </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                電話番号 <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="tel"
-                value={formData.phoneNumber}
-                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  電話番号 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone_number}
+                  onChange={(e) => handleInputChange('phone_number', e.target.value)}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                />
+              </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-              }}>
-                メールアドレス <span style={{ color: '#e74c3c' }}>*</span>
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium">
+                  メールアドレス <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  required
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                />
+              </div>
 
-            <button
-              type="submit"
-              style={{
-                width: '100%',
-                padding: '16px',
-                backgroundColor: '#FF6B35',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
-            >
-              更新する
-            </button>
-          </div>
-        </form>
-      </div>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="w-full bg-organizer hover:bg-organizer-dark"
+              >
+                {saving ? '保存中...' : '保存する'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
-

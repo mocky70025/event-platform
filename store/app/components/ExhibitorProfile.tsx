@@ -1,420 +1,225 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import ExhibitorEditForm from './ExhibitorEditForm';
-import LoadingSpinner from './LoadingSpinner';
+import { getCurrentUser, signOut } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Edit, LogOut, FileText } from 'lucide-react';
 
-interface Exhibitor {
+interface ExhibitorData {
   id: string;
   name: string;
   gender: string;
   age: number;
   phone_number: string;
   email: string;
-  genre_category?: string;
-  genre_free_text?: string;
-  business_license_image_url?: string;
-  vehicle_inspection_image_url?: string;
-  automobile_inspection_image_url?: string;
-  pl_insurance_image_url?: string;
-  fire_equipment_layout_image_url?: string;
+  genre_category: string | null;
+  genre_free_text: string | null;
+  business_license_image_url: string | null;
+  vehicle_inspection_image_url: string | null;
+  automobile_inspection_image_url: string | null;
+  pl_insurance_image_url: string | null;
+  fire_equipment_layout_image_url: string | null;
 }
 
+const documentLabels = {
+  business_license_image_url: '営業許可証',
+  vehicle_inspection_image_url: '車検証',
+  automobile_inspection_image_url: '自賠責保険',
+  pl_insurance_image_url: 'PL保険',
+  fire_equipment_layout_image_url: '消防設備配置図',
+};
+
 export default function ExhibitorProfile() {
-  const [exhibitor, setExhibitor] = useState<Exhibitor | null>(null);
+  const router = useRouter();
+  const [exhibitor, setExhibitor] = useState<ExhibitorData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    loadProfile();
+    fetchExhibitorData();
   }, []);
 
-  const loadProfile = async () => {
+  const fetchExhibitorData = async () => {
     try {
-      setLoading(true);
       const user = await getCurrentUser();
       if (!user) {
-        setError('ログインが必要です');
+        router.push('/');
         return;
       }
 
-      const { data, error: queryError } = await supabase
+      const { data, error } = await supabase
         .from('exhibitors')
         .select('*')
         .eq('user_id', user.id)
         .single();
 
-      if (queryError) throw queryError;
+      if (error) throw error;
       setExhibitor(data);
-    } catch (err: any) {
-      console.error('Error loading profile:', err);
-      setError(err.message || 'プロフィールの読み込みに失敗しました');
+    } catch (error) {
+      console.error('出店者情報取得エラー:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditComplete = () => {
-    setIsEditing(false);
-    loadProfile();
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('ログアウトエラー:', error);
+    }
   };
 
   if (loading) {
     return (
-      <div style={{ padding: '20px' }}>
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600">読み込み中...</div>
       </div>
-    );
-  }
-
-  if (error && !exhibitor) {
-    return (
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-      }}>
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#fee',
-          color: '#c33',
-          borderRadius: '8px',
-        }}>
-          {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (isEditing && exhibitor) {
-    return (
-      <ExhibitorEditForm
-        exhibitor={exhibitor}
-        onComplete={handleEditComplete}
-        onCancel={() => setIsEditing(false)}
-      />
     );
   }
 
   if (!exhibitor) {
     return (
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-      }}>
-        <div style={{
-          fontSize: '16px',
-          color: '#999',
-        }}>
-          プロフィール情報がありません
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <p className="text-gray-600 mb-4">出店者情報が登録されていません</p>
+            <Button
+              onClick={() => router.push('/register')}
+              className="bg-store hover:bg-store-dark"
+            >
+              情報を登録する
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      paddingBottom: '80px',
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '16px',
-        borderBottom: '1px solid #e0e0e0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        <h1 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-        }}>
-          プロフィール
-        </h1>
-        <button
-          onClick={() => setIsEditing(true)}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#5DABA8',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '14px',
-            cursor: 'pointer',
-          }}
-        >
-          編集
-        </button>
-      </div>
-
-      <div style={{
-        padding: '20px',
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        }}>
-          <div style={{
-            marginBottom: '20px',
-          }}>
-            <div style={{
-              fontSize: '14px',
-              color: '#999',
-              marginBottom: '4px',
-            }}>
-              名前
-            </div>
-            <div style={{
-              fontSize: '18px',
-              fontWeight: '500',
-            }}>
-              {exhibitor.name}
-            </div>
-          </div>
-
-          <div style={{
-            marginBottom: '20px',
-          }}>
-            <div style={{
-              fontSize: '14px',
-              color: '#999',
-              marginBottom: '4px',
-            }}>
-              性別
-            </div>
-            <div style={{
-              fontSize: '18px',
-            }}>
-              {exhibitor.gender}
-            </div>
-          </div>
-
-          <div style={{
-            marginBottom: '20px',
-          }}>
-            <div style={{
-              fontSize: '14px',
-              color: '#999',
-              marginBottom: '4px',
-            }}>
-              年齢
-            </div>
-            <div style={{
-              fontSize: '18px',
-            }}>
-              {exhibitor.age}歳
-            </div>
-          </div>
-
-          <div style={{
-            marginBottom: '20px',
-          }}>
-            <div style={{
-              fontSize: '14px',
-              color: '#999',
-              marginBottom: '4px',
-            }}>
-              電話番号
-            </div>
-            <div style={{
-              fontSize: '18px',
-            }}>
-              {exhibitor.phone_number}
-            </div>
-          </div>
-
-          <div style={{
-            marginBottom: '20px',
-          }}>
-            <div style={{
-              fontSize: '14px',
-              color: '#999',
-              marginBottom: '4px',
-            }}>
-              メールアドレス
-            </div>
-            <div style={{
-              fontSize: '18px',
-            }}>
-              {exhibitor.email}
-            </div>
-          </div>
-
-          {exhibitor.genre_category && (
-            <div style={{
-              marginBottom: '20px',
-            }}>
-              <div style={{
-                fontSize: '14px',
-                color: '#999',
-                marginBottom: '4px',
-              }}>
-                ジャンル（カテゴリ）
-              </div>
-              <div style={{
-                fontSize: '18px',
-              }}>
-                {exhibitor.genre_category}
-              </div>
-            </div>
-          )}
-
-          {exhibitor.genre_free_text && (
-            <div style={{
-              marginBottom: '20px',
-            }}>
-              <div style={{
-                fontSize: '14px',
-                color: '#999',
-                marginBottom: '4px',
-              }}>
-                ジャンル（自由記述）
-              </div>
-              <div style={{
-                fontSize: '18px',
-                lineHeight: '1.6',
-              }}>
-                {exhibitor.genre_free_text}
-              </div>
-            </div>
-          )}
-
-          <div style={{
-            marginTop: '30px',
-            paddingTop: '20px',
-            borderTop: '1px solid #e0e0e0',
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: 'bold',
-              marginBottom: '16px',
-            }}>
-              登録書類
-            </h3>
-
-            {exhibitor.business_license_image_url && (
-              <div style={{
-                marginBottom: '12px',
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#666',
-                  marginBottom: '8px',
-                }}>
-                  営業許可証
-                </div>
-                <img
-                  src={exhibitor.business_license_image_url}
-                  alt="営業許可証"
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '200px',
-                    borderRadius: '4px',
-                  }}
-                />
-              </div>
-            )}
-
-            {exhibitor.vehicle_inspection_image_url && (
-              <div style={{
-                marginBottom: '12px',
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#666',
-                  marginBottom: '8px',
-                }}>
-                  車検証
-                </div>
-                <img
-                  src={exhibitor.vehicle_inspection_image_url}
-                  alt="車検証"
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '200px',
-                    borderRadius: '4px',
-                  }}
-                />
-              </div>
-            )}
-
-            {exhibitor.automobile_inspection_image_url && (
-              <div style={{
-                marginBottom: '12px',
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#666',
-                  marginBottom: '8px',
-                }}>
-                  自賠責保険
-                </div>
-                <img
-                  src={exhibitor.automobile_inspection_image_url}
-                  alt="自賠責保険"
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '200px',
-                    borderRadius: '4px',
-                  }}
-                />
-              </div>
-            )}
-
-            {exhibitor.pl_insurance_image_url && (
-              <div style={{
-                marginBottom: '12px',
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#666',
-                  marginBottom: '8px',
-                }}>
-                  PL保険
-                </div>
-                <img
-                  src={exhibitor.pl_insurance_image_url}
-                  alt="PL保険"
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '200px',
-                    borderRadius: '4px',
-                  }}
-                />
-              </div>
-            )}
-
-            {exhibitor.fire_equipment_layout_image_url && (
-              <div style={{
-                marginBottom: '12px',
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#666',
-                  marginBottom: '8px',
-                }}>
-                  消防設備配置図
-                </div>
-                <img
-                  src={exhibitor.fire_equipment_layout_image_url}
-                  alt="消防設備配置図"
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '200px',
-                    borderRadius: '4px',
-                  }}
-                />
-              </div>
-            )}
-          </div>
+    <div className="min-h-screen bg-gray-50 pb-8">
+      {/* ヘッダー */}
+      <header className="bg-white border-b border-gray-200">
+        <div className="px-4 py-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-gray-800">プロフィール</h1>
+          <Button
+            onClick={() => router.push('/profile/edit')}
+            size="sm"
+            className="bg-store hover:bg-store-dark"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            編集
+          </Button>
         </div>
-      </div>
+      </header>
+
+      <main className="px-4 py-4 space-y-4">
+        {/* 基本情報 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>基本情報</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+              <span className="text-gray-600">名前</span>
+              <span className="font-medium">{exhibitor.name}</span>
+            </div>
+            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+              <span className="text-gray-600">性別</span>
+              <span className="font-medium">{exhibitor.gender}</span>
+            </div>
+            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+              <span className="text-gray-600">年齢</span>
+              <span className="font-medium">{exhibitor.age}歳</span>
+            </div>
+            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+              <span className="text-gray-600">電話番号</span>
+              <span className="font-medium">{exhibitor.phone_number}</span>
+            </div>
+            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+              <span className="text-gray-600">メール</span>
+              <span className="font-medium break-all">{exhibitor.email}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ジャンル情報 */}
+        {(exhibitor.genre_category || exhibitor.genre_free_text) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>ジャンル情報</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {exhibitor.genre_category && (
+                <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+                  <span className="text-gray-600">カテゴリ</span>
+                  <span className="font-medium">{exhibitor.genre_category}</span>
+                </div>
+              )}
+              {exhibitor.genre_free_text && (
+                <div className="text-sm">
+                  <span className="text-gray-600 block mb-1">詳細</span>
+                  <p className="font-medium whitespace-pre-wrap">
+                    {exhibitor.genre_free_text}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 登録書類 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>登録書類</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(documentLabels).map(([key, label]) => {
+                const url = exhibitor[key as keyof ExhibitorData] as string | null;
+                return (
+                  <div key={key} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {url ? (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <img
+                          src={url}
+                          alt={label}
+                          className="w-full h-32 object-cover"
+                        />
+                        <div className="p-2 bg-gray-50 text-xs text-center text-gray-700">
+                          {label}
+                        </div>
+                      </a>
+                    ) : (
+                      <div className="h-32 flex items-center justify-center bg-gray-100">
+                        <FileText className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ログアウトボタン */}
+        <Button
+          onClick={handleSignOut}
+          variant="outline"
+          className="w-full text-red-600 border-red-600 hover:bg-red-50"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          ログアウト
+        </Button>
+      </main>
     </div>
   );
 }
-

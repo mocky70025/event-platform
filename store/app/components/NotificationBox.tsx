@@ -1,57 +1,55 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import LoadingSpinner from './LoadingSpinner';
+import { getCurrentUser } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Bell, CheckCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Notification {
   id: string;
-  notification_type: string;
+  user_id: string;
+  user_type: 'organizer' | 'exhibitor';
   title: string;
   message: string;
   is_read: boolean;
+  related_id: string | null;
   created_at: string;
-  related_event_id?: string;
-  related_application_id?: string;
 }
 
 export default function NotificationBox() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    loadNotifications();
-    // 定期的に通知を更新
-    const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
+    fetchNotifications();
   }, []);
 
-  const loadNotifications = async () => {
+  const fetchNotifications = async () => {
     try {
       const user = await getCurrentUser();
       if (!user) {
-        setLoading(false);
+        router.push('/');
         return;
       }
 
-      const { data, error: queryError } = await supabase
+      const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .eq('user_type', 'exhibitor')
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
 
-      if (queryError) throw queryError;
+      if (error) throw error;
 
       setNotifications(data || []);
-      setUnreadCount((data || []).filter(n => !n.is_read).length);
-    } catch (err: any) {
-      console.error('Error loading notifications:', err);
-      setError(err.message || '通知の読み込みに失敗しました');
+      setUnreadCount(data?.filter((n) => !n.is_read).length || 0);
+    } catch (error) {
+      console.error('通知取得エラー:', error);
     } finally {
       setLoading(false);
     }
@@ -66,14 +64,13 @@ export default function NotificationBox() {
 
       if (error) throw error;
 
-      setNotifications(prev =>
-        prev.map(n =>
-          n.id === notificationId ? { ...n, is_read: true } : n
-        )
+      // ローカルステートを更新
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (err: any) {
-      console.error('Error marking notification as read:', err);
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('既読更新エラー:', error);
     }
   };
 
@@ -86,17 +83,15 @@ export default function NotificationBox() {
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', user.id)
-        .eq('user_type', 'exhibitor')
         .eq('is_read', false);
 
       if (error) throw error;
 
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, is_read: true }))
-      );
+      // ローカルステートを更新
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
-    } catch (err: any) {
-      console.error('Error marking all as read:', err);
+    } catch (error) {
+      console.error('一括既読更新エラー:', error);
     }
   };
 
@@ -105,151 +100,126 @@ export default function NotificationBox() {
       markAsRead(notification.id);
     }
 
-    if (notification.related_event_id) {
-      window.location.href = `/event/${notification.related_event_id}`;
-    } else if (notification.related_application_id) {
-      window.location.href = '/applications';
+    // 関連ページへ遷移
+    if (notification.related_id) {
+      router.push(`/events/${notification.related_id}`);
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'たった今';
+    if (diffMins < 60) return `${diffMins}分前`;
+    if (diffHours < 24) return `${diffHours}時間前`;
+    if (diffDays < 7) return `${diffDays}日前`;
+
+    return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
   if (loading) {
     return (
-      <div style={{ padding: '20px' }}>
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600">読み込み中...</div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      paddingBottom: '80px',
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '16px',
-        borderBottom: '1px solid #e0e0e0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
-        <h1 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-        }}>
-          通知
-          {unreadCount > 0 && (
-            <span style={{
-              marginLeft: '8px',
-              padding: '2px 8px',
-              backgroundColor: '#e74c3c',
-              color: 'white',
-              borderRadius: '12px',
-              fontSize: '12px',
-            }}>
-              {unreadCount}
-            </span>
-          )}
-        </h1>
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#5DABA8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '14px',
-              cursor: 'pointer',
-            }}
-          >
-            すべて既読にする
-          </button>
-        )}
-      </div>
-
-      <div style={{
-        padding: '20px',
-      }}>
-        {error && (
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '8px',
-            marginBottom: '16px',
-          }}>
-            {error}
-          </div>
-        )}
-
-        {notifications.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px 20px',
-            color: '#999',
-          }}>
-            <div style={{
-              fontSize: '48px',
-              marginBottom: '16px',
-            }}>🔔</div>
-            <div style={{
-              fontSize: '16px',
-            }}>
-              通知はありません
+    <div className="min-h-screen bg-gray-50">
+      {/* ヘッダー */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-800">通知</h1>
+              {unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </div>
+            {unreadCount > 0 && (
+              <Button
+                onClick={markAllAsRead}
+                size="sm"
+                variant="outline"
+                className="text-store border-store hover:bg-store hover:text-white"
+              >
+                <CheckCheck className="h-4 w-4 mr-2" />
+                すべて既読
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* 通知一覧 */}
+      <main className="px-4 py-4">
+        {notifications.length === 0 ? (
+          <div className="text-center py-12">
+            <Bell className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">通知はありません</p>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gap: '12px',
-          }}>
+          <div className="space-y-3">
             {notifications.map((notification) => (
-              <div
+              <Card
                 key={notification.id}
+                className={cn(
+                  'cursor-pointer transition-all hover:shadow-md',
+                  !notification.is_read &&
+                    'border-l-4 border-l-store bg-blue-50'
+                )}
                 onClick={() => handleNotificationClick(notification)}
-                style={{
-                  backgroundColor: notification.is_read ? 'white' : '#f0f8ff',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  cursor: 'pointer',
-                  borderLeft: notification.is_read ? 'none' : '4px solid #5DABA8',
-                }}
               >
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  marginBottom: '8px',
-                  color: notification.is_read ? '#666' : '#333',
-                }}>
-                  {notification.title}
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  color: '#666',
-                  marginBottom: '8px',
-                  lineHeight: '1.5',
-                }}>
-                  {notification.message}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: '#999',
-                }}>
-                  {new Date(notification.created_at).toLocaleString('ja-JP')}
-                </div>
-              </div>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        'flex-shrink-0 mt-1',
+                        !notification.is_read ? 'text-store' : 'text-gray-400'
+                      )}
+                    >
+                      <Bell className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className={cn(
+                          'text-sm font-semibold mb-1',
+                          !notification.is_read
+                            ? 'text-gray-900'
+                            : 'text-gray-600'
+                        )}
+                      >
+                        {notification.title}
+                      </h3>
+                      <p
+                        className={cn(
+                          'text-sm mb-2',
+                          !notification.is_read
+                            ? 'text-gray-700'
+                            : 'text-gray-500'
+                        )}
+                      >
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {formatDate(notification.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
-

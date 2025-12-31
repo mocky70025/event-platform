@@ -52,10 +52,10 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        organizer: {
-          DEFAULT: "#FF6B35",
-          light: "#FF8C5C",
-          dark: "#E55520",
+        store: {
+          DEFAULT: "#5DABA8",
+          light: "#7CC2BE",
+          dark: "#4A8985",
         },
       },
       borderRadius: {

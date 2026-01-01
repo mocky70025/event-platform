@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Building2, User, Phone, Mail, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { StatusBadge } from '@/components/status-badge';
+import { Building2, User, Phone, Mail, CheckCircle, Clock } from 'lucide-react';
+import LoadingSpinner from './LoadingSpinner';
 
 interface Organizer {
   id: string;
@@ -112,78 +113,84 @@ export default function OrganizerManagement({ onUpdate }: OrganizerManagementPro
     : organizers.filter(o => filter === 'pending' ? !o.is_approved : o.is_approved);
 
   if (loading) {
-    return (
-      <div className="py-12 text-center">
-        <div className="animate-pulse text-[#3B82F6] font-medium">読み込み中...</div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
     <div className="space-y-6">
-      {/* 統計カード */}
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">主催者管理</h2>
+        <p className="text-sm text-gray-600">主催者の承認と管理を行います</p>
+      </div>
+
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <Card className="shadow-md">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
             <p className="text-3xl font-bold text-gray-900 mb-1">{statusCounts.all}</p>
             <p className="text-sm text-gray-600">総主催者数</p>
           </CardContent>
         </Card>
-        <Card className="shadow-md">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
-            <p className="text-3xl font-bold text-orange-600 mb-1">{statusCounts.pending}</p>
+            <p className="text-3xl font-bold text-amber-600 mb-1">{statusCounts.pending}</p>
             <p className="text-sm text-gray-600">承認待ち</p>
           </CardContent>
         </Card>
-        <Card className="shadow-md">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
-            <p className="text-3xl font-bold text-green-600 mb-1">{statusCounts.approved}</p>
+            <p className="text-3xl font-bold text-emerald-600 mb-1">{statusCounts.approved}</p>
             <p className="text-sm text-gray-600">承認済み</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* フィルター */}
+      {/* Filter */}
       <div className="flex gap-3">
-        {[
-          { value: 'all', label: 'すべて', count: statusCounts.all },
-          { value: 'pending', label: '承認待ち', count: statusCounts.pending },
-          { value: 'approved', label: '承認済み', count: statusCounts.approved },
-        ].map((btn) => (
-          <button
-            key={btn.value}
-            onClick={() => setFilter(btn.value as typeof filter)}
-            className={cn(
-              'px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all shadow-sm',
-              filter === btn.value
-                ? 'bg-[#3B82F6] text-white shadow-md scale-105'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-            )}
-          >
-            {btn.label}
-            <span className={cn(
-              'ml-2 px-2 py-0.5 rounded-full text-xs font-bold',
-              filter === btn.value
-                ? 'bg-white/20 text-white'
-                : 'bg-gray-100 text-gray-600'
-            )}>
-              {btn.count}
-            </span>
-          </button>
-        ))}
+        <button
+          onClick={() => setFilter('all')}
+          className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            filter === 'all'
+              ? 'bg-indigo-500 text-white'
+              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+          }`}
+        >
+          すべて ({statusCounts.all})
+        </button>
+        <button
+          onClick={() => setFilter('pending')}
+          className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            filter === 'pending'
+              ? 'bg-indigo-500 text-white'
+              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+          }`}
+        >
+          承認待ち ({statusCounts.pending})
+        </button>
+        <button
+          onClick={() => setFilter('approved')}
+          className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            filter === 'approved'
+              ? 'bg-indigo-500 text-white'
+              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+          }`}
+        >
+          承認済み ({statusCounts.approved})
+        </button>
       </div>
 
-      {/* 主催者一覧 */}
+      {/* Organizers List */}
       {filteredOrganizers.length === 0 ? (
-        <Card className="shadow-lg">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="py-16 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
-              <Building2 className="h-10 w-10 text-gray-400" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <Building2 className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               主催者がいません
             </h3>
-            <p className="text-gray-600">
+            <p className="text-sm text-gray-600">
               {filter === 'pending' ? '承認待ちの主催者はいません' : filter === 'approved' ? '承認済みの主催者はいません' : '主催者が登録されていません'}
             </p>
           </CardContent>
@@ -191,15 +198,15 @@ export default function OrganizerManagement({ onUpdate }: OrganizerManagementPro
       ) : (
         <div className="space-y-4">
           {filteredOrganizers.map((organizer) => (
-            <Card key={organizer.id} className="shadow-lg hover:shadow-xl transition-shadow">
+            <Card key={organizer.id} className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow transition-all">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#60A5FA] to-[#3B82F6] flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xl font-semibold">
                       {organizer.organization_name[0]}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
                         {organizer.organization_name}
                       </h3>
                       <p className="text-sm text-gray-600">
@@ -207,75 +214,56 @@ export default function OrganizerManagement({ onUpdate }: OrganizerManagementPro
                       </p>
                     </div>
                   </div>
-                  <div className={cn(
-                    'px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2',
-                    organizer.is_approved 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-orange-100 text-orange-800'
-                  )}>
-                    {organizer.is_approved ? (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        承認済み
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="w-4 h-4" />
-                        承認待ち
-                      </>
-                    )}
-                  </div>
+                  <StatusBadge status={organizer.is_approved ? 'approved' : 'pending'} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <User className="h-5 w-5 text-[#3B82F6] flex-shrink-0" />
+                    <User className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">担当者名</p>
-                      <p className="font-semibold text-gray-900">{organizer.name}</p>
+                      <p className="text-xs text-gray-600">担当者名</p>
+                      <p className="font-medium text-gray-900">{organizer.name}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Phone className="h-5 w-5 text-[#3B82F6] flex-shrink-0" />
+                    <Phone className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">電話番号</p>
-                      <p className="font-semibold text-gray-900">{organizer.phone_number}</p>
+                      <p className="text-xs text-gray-600">電話番号</p>
+                      <p className="font-medium text-gray-900">{organizer.phone_number}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg md:col-span-2">
-                    <Mail className="h-5 w-5 text-[#3B82F6] flex-shrink-0" />
+                    <Mail className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">メールアドレス</p>
-                      <p className="font-semibold text-gray-900 text-sm break-all">{organizer.email}</p>
+                      <p className="text-xs text-gray-600">メールアドレス</p>
+                      <p className="font-medium text-gray-900 text-sm break-all">{organizer.email}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t">
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
                   {!organizer.is_approved ? (
                     <>
                       <Button
                         onClick={() => handleApprove(organizer.id)}
                         disabled={processing === organizer.id}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold shadow-md"
+                        className="flex-1 h-10 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {processing === organizer.id ? '処理中...' : '✓ 承認する'}
+                        {processing === organizer.id ? '処理中...' : '承認する'}
                       </Button>
                       <Button
                         onClick={() => handleReject(organizer.id)}
                         disabled={processing === organizer.id}
-                        variant="outline"
-                        className="flex-1 h-12 text-base font-semibold text-red-600 border-2 border-red-600 hover:bg-red-50 shadow-md"
+                        className="flex-1 h-10 bg-white border border-red-500 hover:bg-red-50 text-red-600 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {processing === organizer.id ? '処理中...' : '✕ 却下する'}
+                        {processing === organizer.id ? '処理中...' : '却下する'}
                       </Button>
                     </>
                   ) : (
                     <Button
                       onClick={() => handleReject(organizer.id)}
                       disabled={processing === organizer.id}
-                      variant="outline"
-                      className="flex-1 h-12 text-base font-semibold text-orange-600 border-2 border-orange-600 hover:bg-orange-50 shadow-md"
+                      className="flex-1 h-10 bg-white border border-amber-500 hover:bg-amber-50 text-amber-600 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {processing === organizer.id ? '処理中...' : '承認を取り消す'}
                     </Button>

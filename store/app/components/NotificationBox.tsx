@@ -125,31 +125,29 @@ export default function NotificationBox() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">読み込み中...</div>
+        <div className="animate-pulse text-[#5DABA8] font-medium">読み込み中...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="px-4 py-4">
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-gray-800">通知</h1>
-              {unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
+            <div className="flex items-center gap-3">
+              <Bell className="w-8 h-8 text-[#5DABA8]" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">通知</h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  {unreadCount > 0 ? `${unreadCount}件の未読通知` : 'すべて既読'}
+                </p>
+              </div>
             </div>
             {unreadCount > 0 && (
               <Button
                 onClick={markAllAsRead}
-                size="sm"
-                variant="outline"
-                className="text-store border-store hover:bg-store hover:text-white"
+                className="bg-[#5DABA8] hover:bg-[#4A9693] text-white"
               >
                 <CheckCheck className="h-4 w-4 mr-2" />
                 すべて既読
@@ -159,49 +157,64 @@ export default function NotificationBox() {
         </div>
       </header>
 
-      {/* 通知一覧 */}
-      <main className="px-4 py-4">
+      <main className="max-w-4xl mx-auto px-4 py-8">
         {notifications.length === 0 ? (
-          <div className="text-center py-12">
-            <Bell className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">通知はありません</p>
-          </div>
+          <Card className="shadow-lg">
+            <CardContent className="py-16 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
+                <Bell className="h-10 w-10 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                通知はありません
+              </h3>
+              <p className="text-gray-600">
+                新しい通知があるとここに表示されます
+              </p>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-3">
             {notifications.map((notification) => (
               <Card
                 key={notification.id}
                 className={cn(
-                  'cursor-pointer transition-all hover:shadow-md',
+                  'cursor-pointer transition-all hover:shadow-lg hover:scale-[1.01]',
                   !notification.is_read &&
-                    'border-l-4 border-l-store bg-blue-50'
+                    'border-l-4 border-l-[#5DABA8] bg-[#F0F9F9] shadow-md'
                 )}
                 onClick={() => handleNotificationClick(notification)}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
                     <div
                       className={cn(
-                        'flex-shrink-0 mt-1',
-                        !notification.is_read ? 'text-store' : 'text-gray-400'
+                        'flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
+                        !notification.is_read 
+                          ? 'bg-[#5DABA8] text-white' 
+                          : 'bg-gray-100 text-gray-400'
                       )}
                     >
-                      <Bell className="h-5 w-5" />
+                      <Bell className="h-6 w-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3
-                        className={cn(
-                          'text-sm font-semibold mb-1',
-                          !notification.is_read
-                            ? 'text-gray-900'
-                            : 'text-gray-600'
-                        )}
-                      >
-                        {notification.title}
-                      </h3>
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <h3
+                          className={cn(
+                            'text-base font-bold',
+                            !notification.is_read
+                              ? 'text-gray-900'
+                              : 'text-gray-600'
+                          )}
+                        >
+                          {notification.title}
+                        </h3>
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                          {formatDate(notification.created_at)}
+                        </span>
+                      </div>
                       <p
                         className={cn(
-                          'text-sm mb-2',
+                          'text-sm leading-relaxed',
                           !notification.is_read
                             ? 'text-gray-700'
                             : 'text-gray-500'
@@ -209,9 +222,12 @@ export default function NotificationBox() {
                       >
                         {notification.message}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        {formatDate(notification.created_at)}
-                      </p>
+                      {!notification.is_read && (
+                        <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#5DABA8] text-white text-xs font-medium rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                          未読
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

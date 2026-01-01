@@ -5,8 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/status-badge';
-import { User, Phone, Mail, Tag } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { User, Phone, Mail, Tag, FileText } from 'lucide-react';
 
 interface Application {
   id: string;
@@ -91,7 +90,6 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
 
       if (error) throw error;
 
-      // ローカルステートを更新
       setApplications((prev) =>
         prev.map((app) =>
           app.id === applicationId
@@ -120,7 +118,6 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
 
       if (error) throw error;
 
-      // ローカルステートを更新
       setApplications((prev) =>
         prev.map((app) =>
           app.id === applicationId
@@ -146,17 +143,10 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
       ? applications
       : applications.filter((app) => app.application_status === filterStatus);
 
-  const filterButtons: { status: FilterStatus; label: string }[] = [
-    { status: 'all', label: 'すべて' },
-    { status: 'pending', label: '審査中' },
-    { status: 'approved', label: '承認済み' },
-    { status: 'rejected', label: '却下' },
-  ];
-
   if (loading) {
     return (
       <div className="py-12 text-center">
-        <div className="animate-pulse text-[#E58A7B] font-medium">読み込み中...</div>
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-orange-500 mx-auto"></div>
       </div>
     );
   }
@@ -170,27 +160,27 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
 
   return (
     <div className="space-y-6">
-      {/* 統計カード */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="shadow-md">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
             <p className="text-3xl font-bold text-gray-900 mb-1">{statusCounts.all}</p>
             <p className="text-sm text-gray-600">総応募数</p>
           </CardContent>
         </Card>
-        <Card className="shadow-md">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
-            <p className="text-3xl font-bold text-orange-600 mb-1">{statusCounts.pending}</p>
+            <p className="text-3xl font-bold text-amber-600 mb-1">{statusCounts.pending}</p>
             <p className="text-sm text-gray-600">審査中</p>
           </CardContent>
         </Card>
-        <Card className="shadow-md">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
-            <p className="text-3xl font-bold text-green-600 mb-1">{statusCounts.approved}</p>
+            <p className="text-3xl font-bold text-emerald-600 mb-1">{statusCounts.approved}</p>
             <p className="text-sm text-gray-600">承認済み</p>
           </CardContent>
         </Card>
-        <Card className="shadow-md">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
             <p className="text-3xl font-bold text-red-600 mb-1">{statusCounts.rejected}</p>
             <p className="text-sm text-gray-600">却下</p>
@@ -198,46 +188,61 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
         </Card>
       </div>
 
-      {/* フィルターボタン */}
+      {/* Filter Buttons */}
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {filterButtons.map((btn) => {
-          const count = statusCounts[btn.status];
-          return (
-            <button
-              key={btn.status}
-              onClick={() => setFilterStatus(btn.status)}
-              className={cn(
-                'px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all shadow-sm',
-                filterStatus === btn.status
-                  ? 'bg-[#E58A7B] text-white shadow-md scale-105'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-              )}
-            >
-              {btn.label}
-              <span className={cn(
-                'ml-2 px-2 py-0.5 rounded-full text-xs font-bold',
-                filterStatus === btn.status
-                  ? 'bg-white/20 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              )}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+        <button
+          onClick={() => setFilterStatus('all')}
+          className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            filterStatus === 'all'
+              ? 'bg-orange-500 text-white'
+              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+          }`}
+        >
+          すべて ({statusCounts.all})
+        </button>
+        <button
+          onClick={() => setFilterStatus('pending')}
+          className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            filterStatus === 'pending'
+              ? 'bg-orange-500 text-white'
+              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+          }`}
+        >
+          審査中 ({statusCounts.pending})
+        </button>
+        <button
+          onClick={() => setFilterStatus('approved')}
+          className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            filterStatus === 'approved'
+              ? 'bg-orange-500 text-white'
+              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+          }`}
+        >
+          承認済み ({statusCounts.approved})
+        </button>
+        <button
+          onClick={() => setFilterStatus('rejected')}
+          className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            filterStatus === 'rejected'
+              ? 'bg-orange-500 text-white'
+              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+          }`}
+        >
+          却下 ({statusCounts.rejected})
+        </button>
       </div>
 
-      {/* 申し込み一覧 */}
+      {/* Applications List */}
       {filteredApplications.length === 0 ? (
-        <Card className="shadow-lg">
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="py-16 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
-              <User className="h-10 w-10 text-gray-400" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <User className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {filterStatus === 'all' ? '申し込みがありません' : `${filterButtons.find(b => b.status === filterStatus)?.label}の申し込みはありません`}
+              {filterStatus === 'all' ? '申し込みがありません' : '該当する申し込みはありません'}
             </h3>
-            <p className="text-gray-600">
+            <p className="text-sm text-gray-600">
               申し込みがあるとここに表示されます
             </p>
           </CardContent>
@@ -245,16 +250,16 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
       ) : (
         <div className="space-y-4">
           {filteredApplications.map((application) => (
-            <Card key={application.id} className="shadow-lg hover:shadow-xl transition-shadow">
+            <Card key={application.id} className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow transition-all">
               <CardContent className="p-6">
-                {/* ヘッダー */}
+                {/* Header */}
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F5C0B3] to-[#E58A7B] flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xl font-semibold">
                       {application.exhibitors.name[0]}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
                         {application.exhibitors.name}
                       </h3>
                       <p className="text-sm text-gray-600">
@@ -265,39 +270,39 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
                   <StatusBadge status={application.application_status} />
                 </div>
 
-                {/* 基本情報 */}
+                {/* Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <User className="h-5 w-5 text-[#E58A7B] flex-shrink-0" />
+                    <User className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">性別・年齢</p>
-                      <p className="font-semibold text-gray-900">
+                      <p className="text-xs text-gray-600">性別・年齢</p>
+                      <p className="font-medium text-gray-900">
                         {application.exhibitors.gender} / {application.exhibitors.age}歳
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Phone className="h-5 w-5 text-[#E58A7B] flex-shrink-0" />
+                    <Phone className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">電話番号</p>
-                      <p className="font-semibold text-gray-900">{application.exhibitors.phone_number}</p>
+                      <p className="text-xs text-gray-600">電話番号</p>
+                      <p className="font-medium text-gray-900">{application.exhibitors.phone_number}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <Mail className="h-5 w-5 text-[#E58A7B] flex-shrink-0" />
+                    <Mail className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500">メール</p>
-                      <p className="font-semibold text-gray-900 text-sm break-all">
+                      <p className="text-xs text-gray-600">メール</p>
+                      <p className="font-medium text-gray-900 text-sm break-all">
                         {application.exhibitors.email}
                       </p>
                     </div>
                   </div>
                   {application.exhibitors.genre_category && (
                     <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <Tag className="h-5 w-5 text-[#E58A7B] flex-shrink-0" />
+                      <Tag className="h-5 w-5 text-gray-600 flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-gray-500">ジャンル</p>
-                        <p className="font-semibold text-gray-900">
+                        <p className="text-xs text-gray-600">ジャンル</p>
+                        <p className="font-medium text-gray-900">
                           {application.exhibitors.genre_category}
                         </p>
                       </div>
@@ -305,20 +310,20 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
                   )}
                 </div>
 
-                {/* ジャンル詳細 */}
+                {/* Genre Details */}
                 {application.exhibitors.genre_free_text && (
-                  <div className="mb-5 p-4 bg-gradient-to-br from-[#FFF5F3] to-white rounded-xl border border-[#E58A7B]/20">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">ジャンル詳細</h4>
+                  <div className="mb-5 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">ジャンル詳細</h4>
                     <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                       {application.exhibitors.genre_free_text}
                     </p>
                   </div>
                 )}
 
-                {/* 登録書類 */}
+                {/* Documents */}
                 <div className="mb-5">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <span className="w-1 h-4 bg-[#E58A7B] rounded-full"></span>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
                     登録書類
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -335,22 +340,21 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
                           href={doc.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="group block border-2 border-gray-200 rounded-lg overflow-hidden hover:border-[#E58A7B] transition-all hover:shadow-md"
+                          className="group block border border-gray-200 rounded-lg overflow-hidden hover:border-orange-500 transition-all hover:shadow"
                         >
                           <div className="relative">
                             <img
                               src={doc.url}
                               alt={doc.label}
-                              className="w-full h-24 object-cover group-hover:scale-105 transition-transform"
+                              className="w-full h-24 object-cover"
                             />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                           </div>
                           <div className="p-2 bg-gray-50 text-xs text-center font-medium text-gray-700">
                             {doc.label}
                           </div>
                         </a>
                       ) : (
-                        <div key={idx} className="border-2 border-dashed border-gray-200 rounded-lg p-4 flex items-center justify-center">
+                        <div key={idx} className="border border-dashed border-gray-200 rounded-lg p-4 flex items-center justify-center">
                           <p className="text-xs text-gray-400 text-center">
                             {doc.label}<br/>未登録
                           </p>
@@ -360,23 +364,22 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
                   </div>
                 </div>
 
-                {/* アクションボタン */}
+                {/* Action Buttons */}
                 {application.application_status === 'pending' && (
-                  <div className="flex gap-3 pt-4 border-t">
+                  <div className="flex gap-3 pt-4 border-t border-gray-200">
                     <Button
                       onClick={() => handleApprove(application.id)}
                       disabled={processing === application.id}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold shadow-md"
+                      className="flex-1 h-10 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {processing === application.id ? '処理中...' : '✓ 承認する'}
+                      {processing === application.id ? '処理中...' : '承認する'}
                     </Button>
                     <Button
                       onClick={() => handleReject(application.id)}
                       disabled={processing === application.id}
-                      variant="outline"
-                      className="flex-1 h-12 text-base font-semibold text-red-600 border-2 border-red-600 hover:bg-red-50 shadow-md"
+                      className="flex-1 h-10 bg-white border border-red-500 hover:bg-red-50 text-red-600 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {processing === application.id ? '処理中...' : '✕ 却下する'}
+                      {processing === application.id ? '処理中...' : '却下する'}
                     </Button>
                   </div>
                 )}

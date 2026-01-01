@@ -4,12 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/auth';
-import { EventCard } from '@/components/event-card';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, MapPin } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface Application {
   id: string;
@@ -47,7 +45,6 @@ export default function ApplicationManagement() {
         return;
       }
 
-      // まず出店者IDを取得
       const { data: exhibitorData, error: exhibitorError } = await supabase
         .from('exhibitors')
         .select('id')
@@ -56,7 +53,6 @@ export default function ApplicationManagement() {
 
       if (exhibitorError) throw exhibitorError;
 
-      // 申し込み履歴を取得
       const { data, error } = await supabase
         .from('event_applications')
         .select(`
@@ -100,17 +96,10 @@ export default function ApplicationManagement() {
       ? applications
       : applications.filter((app) => app.application_status === filterStatus);
 
-  const filterButtons: { status: FilterStatus; label: string; color: string }[] = [
-    { status: 'all', label: 'すべて', color: 'bg-gray-100 text-gray-800' },
-    { status: 'pending', label: '審査中', color: 'bg-orange-100 text-orange-800' },
-    { status: 'approved', label: '承認済み', color: 'bg-green-100 text-green-800' },
-    { status: 'rejected', label: '却下', color: 'bg-red-100 text-red-800' },
-  ];
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-pulse text-[#5DABA8] font-medium">読み込み中...</div>
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-sky-500"></div>
       </div>
     );
   }
@@ -124,36 +113,36 @@ export default function ApplicationManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-6 py-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">申し込み履歴</h1>
-          <p className="text-gray-600">あなたの申し込み状況を確認</p>
+          <p className="text-sm text-gray-600">あなたの申し込み状況を確認</p>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* 統計カード */}
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card className="shadow-md">
+          <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
             <CardContent className="pt-6 text-center">
               <p className="text-3xl font-bold text-gray-900 mb-1">{statusCounts.all}</p>
               <p className="text-sm text-gray-600">総申し込み</p>
             </CardContent>
           </Card>
-          <Card className="shadow-md">
+          <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
             <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-orange-600 mb-1">{statusCounts.pending}</p>
+              <p className="text-3xl font-bold text-amber-600 mb-1">{statusCounts.pending}</p>
               <p className="text-sm text-gray-600">審査中</p>
             </CardContent>
           </Card>
-          <Card className="shadow-md">
+          <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
             <CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold text-green-600 mb-1">{statusCounts.approved}</p>
+              <p className="text-3xl font-bold text-emerald-600 mb-1">{statusCounts.approved}</p>
               <p className="text-sm text-gray-600">承認済み</p>
             </CardContent>
           </Card>
-          <Card className="shadow-md">
+          <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
             <CardContent className="pt-6 text-center">
               <p className="text-3xl font-bold text-red-600 mb-1">{statusCounts.rejected}</p>
               <p className="text-sm text-gray-600">却下</p>
@@ -161,51 +150,66 @@ export default function ApplicationManagement() {
           </Card>
         </div>
 
-        {/* フィルターボタン */}
+        {/* Filter Buttons */}
         <div className="flex gap-3 overflow-x-auto pb-2 mb-6">
-          {filterButtons.map((btn) => {
-            const count = statusCounts[btn.status];
-            return (
-              <button
-                key={btn.status}
-                onClick={() => setFilterStatus(btn.status)}
-                className={cn(
-                  'px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all shadow-sm',
-                  filterStatus === btn.status
-                    ? 'bg-[#5DABA8] text-white shadow-md scale-105'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-                )}
-              >
-                {btn.label}
-                <span className={cn(
-                  'ml-2 px-2 py-0.5 rounded-full text-xs font-bold',
-                  filterStatus === btn.status
-                    ? 'bg-white/20 text-white'
-                    : 'bg-gray-100 text-gray-600'
-                )}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+          <button
+            onClick={() => setFilterStatus('all')}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              filterStatus === 'all'
+                ? 'bg-sky-500 text-white'
+                : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+            }`}
+          >
+            すべて ({statusCounts.all})
+          </button>
+          <button
+            onClick={() => setFilterStatus('pending')}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              filterStatus === 'pending'
+                ? 'bg-sky-500 text-white'
+                : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+            }`}
+          >
+            審査中 ({statusCounts.pending})
+          </button>
+          <button
+            onClick={() => setFilterStatus('approved')}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              filterStatus === 'approved'
+                ? 'bg-sky-500 text-white'
+                : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+            }`}
+          >
+            承認済み ({statusCounts.approved})
+          </button>
+          <button
+            onClick={() => setFilterStatus('rejected')}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              filterStatus === 'rejected'
+                ? 'bg-sky-500 text-white'
+                : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+            }`}
+          >
+            却下 ({statusCounts.rejected})
+          </button>
         </div>
 
-        {/* 申し込み一覧 */}
+        {/* Applications List */}
         {filteredApplications.length === 0 ? (
-          <Card className="shadow-lg">
+          <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
             <CardContent className="py-16 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
-                <Calendar className="h-10 w-10 text-gray-400" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                <Calendar className="h-8 w-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {filterStatus === 'all' ? '申し込み履歴がありません' : `${filterButtons.find(b => b.status === filterStatus)?.label}の申し込みはありません`}
+                {filterStatus === 'all' ? '申し込み履歴がありません' : '該当する申し込みはありません'}
               </h3>
-              <p className="text-gray-600 mb-6">
+              <p className="text-sm text-gray-600 mb-6">
                 イベントに申し込むと、ここに表示されます
               </p>
               <Button
                 onClick={() => router.push('/')}
-                className="bg-[#5DABA8] hover:bg-[#4A9693]"
+                className="h-10 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg px-6 transition-colors"
               >
                 イベントを探す
               </Button>
@@ -216,15 +220,15 @@ export default function ApplicationManagement() {
             {filteredApplications.map((application) => (
               <Card
                 key={application.id}
-                className="overflow-hidden cursor-pointer hover:shadow-xl transition-all hover:scale-[1.01]"
+                className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
                 onClick={() => router.push(`/events/${application.event_id}`)}
               >
                 {application.events.main_image_url && (
-                  <div className="relative aspect-video w-full overflow-hidden bg-gray-100">
+                  <div className="relative aspect-video w-full overflow-hidden bg-gray-100 rounded-t-xl">
                     <img
                       src={application.events.main_image_url}
                       alt={application.events.event_name}
-                      className="w-full h-full object-cover transition-transform hover:scale-105"
+                      className="w-full h-full object-cover"
                     />
                     <div className="absolute top-4 right-4">
                       <StatusBadge status={application.application_status} />
@@ -235,7 +239,7 @@ export default function ApplicationManagement() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900 leading-snug mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
                         {application.events.event_name}
                       </h3>
                       {!application.events.main_image_url && (
@@ -246,10 +250,10 @@ export default function ApplicationManagement() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                     <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <Calendar className="h-5 w-5 text-[#5DABA8] flex-shrink-0" />
+                      <Calendar className="h-5 w-5 text-gray-600 flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-gray-500">開催期間</p>
-                        <p className="font-semibold text-gray-900 text-sm">
+                        <p className="text-xs text-gray-600">開催期間</p>
+                        <p className="font-medium text-gray-900 text-sm">
                           {formatDateRange(
                             application.events.event_start_date,
                             application.events.event_end_date
@@ -258,10 +262,10 @@ export default function ApplicationManagement() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <MapPin className="h-5 w-5 text-[#5DABA8] flex-shrink-0" />
+                      <MapPin className="h-5 w-5 text-gray-600 flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-gray-500">会場</p>
-                        <p className="font-semibold text-gray-900 text-sm">
+                        <p className="text-xs text-gray-600">会場</p>
+                        <p className="font-medium text-gray-900 text-sm">
                           {application.events.venue_name}
                         </p>
                       </div>
@@ -269,7 +273,7 @@ export default function ApplicationManagement() {
                   </div>
 
                   <div className="pt-3 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center justify-between text-xs text-gray-600">
                       <span>申し込み日: {formatDate(application.applied_at)}</span>
                       {application.reviewed_at && (
                         <span>審査日: {formatDate(application.reviewed_at)}</span>

@@ -85,12 +85,7 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <LoadingSpinner />
       </div>
     );

@@ -149,7 +149,7 @@ export default function WelcomeScreen() {
           </div>
 
           {/* Social Login */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Button
               onClick={handleGoogleAuth}
               disabled={loading}

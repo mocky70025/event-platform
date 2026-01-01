@@ -10,6 +10,11 @@ import ImageUpload from './ImageUpload';
 import LoadingSpinner from './LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Checkbox } from './ui/checkbox';
 
 interface EventFormData {
   // Step 1: 基本情報
@@ -282,10 +287,10 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
   if (error && !organizerId) {
     return (
       <div className="min-h-screen flex items-center justify-center p-5 bg-gray-50">
-        <Card className="max-w-md">
+        <Card className="max-w-md bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
             <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={() => router.push('/')} className="bg-organizer hover:bg-organizer-dark">
+            <Button onClick={() => router.push('/')} className="h-10 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg px-6 transition-colors">
               ホームに戻る
             </Button>
           </CardContent>
@@ -295,80 +300,90 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
   }
 
   return (
-    <div className="min-h-screen p-5 bg-gray-50">
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="pt-6">
-          <h1 className="text-2xl font-bold mb-5 text-center">
-            {eventId ? 'イベント編集' : 'イベント作成'}
-          </h1>
+    <div className="min-h-screen bg-gray-50 p-6 pb-20">
+      <Card className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-xl shadow-sm">
+        <CardContent className="pt-8 pb-8 px-6 md:px-10">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2 text-gray-900">
+              {eventId ? 'イベント編集' : 'イベント作成'}
+            </h1>
+            <p className="text-sm text-gray-600">
+              ステップ {currentStep} / 7
+            </p>
+          </div>
 
           <ProgressBar currentStep={currentStep} totalSteps={7} />
 
           {error && (
-            <div className="p-3 mb-5 bg-red-50 text-red-700 rounded text-sm">
+            <div className="p-4 mb-6 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 mt-6">
               {error}
             </div>
           )}
 
-          {/* ステップ1: 基本情報 */}
+          {/* Step 1: Basic Info */}
           {currentStep === 1 && (
-            <div>
-              <h2 className="text-lg font-bold mb-5">基本情報</h2>
-              <div className="space-y-4">
+            <div className="space-y-6 mt-8">
+              <h2 className="text-lg font-semibold text-gray-900">基本情報</h2>
+              <div className="space-y-5">
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
-                    イベント名 <span className="text-red-600">*</span>
-                  </label>
-                  <input
+                  <Label htmlFor="eventName" className="text-sm font-medium text-gray-700 mb-2 block">
+                    イベント名 <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="eventName"
                     type="text"
                     value={formData.eventName}
                     onChange={(e) => handleInputChange('eventName', e.target.value)}
                     required
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
+                  <Label htmlFor="eventNameKana" className="text-sm font-medium text-gray-700 mb-2 block">
                     イベント名（ふりがな）
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="eventNameKana"
                     type="text"
                     value={formData.eventNameKana}
                     onChange={(e) => handleInputChange('eventNameKana', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">ジャンル</label>
-                  <input
+                  <Label htmlFor="genre" className="text-sm font-medium text-gray-700 mb-2 block">ジャンル</Label>
+                  <Input
+                    id="genre"
                     type="text"
                     value={formData.genre}
                     onChange={(e) => handleInputChange('genre', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="shizuokaAssociation"
                     checked={formData.shizuokaAssociation}
-                    onChange={(e) => handleInputChange('shizuokaAssociation', e.target.checked)}
-                    className="w-5 h-5 mr-2"
+                    onCheckedChange={(checked) => handleInputChange('shizuokaAssociation', checked as boolean)}
                   />
-                  <span className="text-sm">静岡県職業能力開発協会関連</span>
-                </label>
+                  <Label htmlFor="shizuokaAssociation" className="text-sm text-gray-700 cursor-pointer">
+                    静岡県職業能力開発協会関連
+                  </Label>
+                </div>
 
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="newspaperOptOut"
                     checked={formData.newspaperOptOut}
-                    onChange={(e) => handleInputChange('newspaperOptOut', e.target.checked)}
-                    className="w-5 h-5 mr-2"
+                    onCheckedChange={(checked) => handleInputChange('newspaperOptOut', checked as boolean)}
                   />
-                  <span className="text-sm">新聞掲載オプトアウト</span>
-                </label>
+                  <Label htmlFor="newspaperOptOut" className="text-sm text-gray-700 cursor-pointer">
+                    新聞掲載オプトアウト
+                  </Label>
+                </div>
               </div>
             </div>
           )}
@@ -379,59 +394,62 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
               <h2 className="text-lg font-bold mb-5">日程・時間</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">
                     開始日 <span className="text-red-600">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="field"
                     type="date"
                     value={formData.eventStartDate}
                     onChange={(e) => handleInputChange('eventStartDate', e.target.value)}
                     required
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">
                     終了日 <span className="text-red-600">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="field"
                     type="date"
                     value={formData.eventEndDate}
                     onChange={(e) => handleInputChange('eventEndDate', e.target.value)}
                     required
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">表示期間</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">表示期間</Label>
+                  <Input
                     type="text"
                     value={formData.displayPeriod}
                     onChange={(e) => handleInputChange('displayPeriod', e.target.value)}
                     placeholder="例: 10:00-18:00"
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">時間</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">時間</Label>
+                  <Input
                     type="text"
                     value={formData.eventTime}
                     onChange={(e) => handleInputChange('eventTime', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">備考</label>
-                  <textarea
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">備考</Label>
+                  <Textarea
+                    id="field"
                     value={formData.scheduleRemarks}
                     onChange={(e) => handleInputChange('scheduleRemarks', e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
               </div>
@@ -444,42 +462,43 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
               <h2 className="text-lg font-bold mb-5">申し込み期間</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2 text-sm font-medium">申し込み開始日</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">申し込み開始日</Label>
+                  <Input
                     type="date"
                     value={formData.applicationStartDate}
                     onChange={(e) => handleInputChange('applicationStartDate', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">申し込み終了日</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">申し込み終了日</Label>
+                  <Input
                     type="date"
                     value={formData.applicationEndDate}
                     onChange={(e) => handleInputChange('applicationEndDate', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">表示期間</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">表示期間</Label>
+                  <Input
                     type="text"
                     value={formData.applicationDisplayPeriod}
                     onChange={(e) => handleInputChange('applicationDisplayPeriod', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">備考</label>
-                  <textarea
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">備考</Label>
+                  <Textarea
+                    id="field"
                     value={formData.applicationRemarks}
                     onChange={(e) => handleInputChange('applicationRemarks', e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
               </div>
@@ -492,23 +511,24 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
               <h2 className="text-lg font-bold mb-5">チケット情報</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2 text-sm font-medium">発売開始日</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">発売開始日</Label>
+                  <Input
                     type="date"
                     value={formData.ticketSaleStartDate}
                     onChange={(e) => handleInputChange('ticketSaleStartDate', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">販売場所</label>
-                  <textarea
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">販売場所</Label>
+                  <Textarea
+                    id="field"
                     value={formData.salesLocation}
                     onChange={(e) => handleInputChange('salesLocation', e.target.value)}
                     rows={3}
                     placeholder="チケット販売場所を入力してください"
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
               </div>
@@ -521,41 +541,44 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
               <h2 className="text-lg font-bold mb-5">イベント内容</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">
                     リードテキスト <span className="text-red-600">*</span>
-                  </label>
-                  <textarea
+                  </Label>
+                  <Textarea
+                    id="field"
                     value={formData.leadText}
                     onChange={(e) => handleInputChange('leadText', e.target.value)}
                     rows={3}
                     required
                     placeholder="イベントの要約を入力してください"
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">
                     説明 <span className="text-red-600">*</span>
-                  </label>
-                  <textarea
+                  </Label>
+                  <Textarea
+                    id="field"
                     value={formData.eventDescription}
                     onChange={(e) => handleInputChange('eventDescription', e.target.value)}
                     rows={5}
                     required
                     placeholder="イベントの詳細を入力してください"
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">紹介文</label>
-                  <textarea
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">紹介文</Label>
+                  <Textarea
+                    id="field"
                     value={formData.introductionText}
                     onChange={(e) => handleInputChange('introductionText', e.target.value)}
                     rows={4}
                     placeholder="イベントの紹介文を入力してください"
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
               </div>
@@ -568,78 +591,79 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
               <h2 className="text-lg font-bold mb-5">会場情報</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">
                     会場名 <span className="text-red-600">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="field"
                     type="text"
                     value={formData.venueName}
                     onChange={(e) => handleInputChange('venueName', e.target.value)}
                     required
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">郵便番号</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">郵便番号</Label>
+                  <Input
                     type="text"
                     value={formData.postalCode}
                     onChange={(e) => handleInputChange('postalCode', e.target.value)}
                     placeholder="例: 123-4567"
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">都道府県</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">都道府県</Label>
+                  <Input
                     type="text"
                     value={formData.prefecture}
                     onChange={(e) => handleInputChange('prefecture', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">市区町村</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">市区町村</Label>
+                  <Input
                     type="text"
                     value={formData.city}
                     onChange={(e) => handleInputChange('city', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">住所</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">住所</Label>
+                  <Input
                     type="text"
                     value={formData.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block mb-2 text-sm font-medium">緯度</label>
-                    <input
+                    <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">緯度</Label>
+                    <Input
                       type="text"
                       value={formData.latitude}
                       onChange={(e) => handleInputChange('latitude', e.target.value)}
                       placeholder="例: 35.6762"
-                      className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                      className="h-10"
                     />
                   </div>
                   <div>
-                    <label className="block mb-2 text-sm font-medium">経度</label>
-                    <input
+                    <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">経度</Label>
+                    <Input
                       type="text"
                       value={formData.longitude}
                       onChange={(e) => handleInputChange('longitude', e.target.value)}
                       placeholder="例: 139.6503"
-                      className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                      className="h-10"
                     />
                   </div>
                 </div>
@@ -653,7 +677,7 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
               <h2 className="text-lg font-bold mb-5">画像アップロード</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2 text-sm font-medium">メイン画像</label>
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">メイン画像</Label>
                   <ImageUpload
                     label="メイン画像"
                     value={formData.mainImageUrl || undefined}
@@ -662,26 +686,25 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
                 </div>
 
                 <div>
-                  <label className="block mb-2 text-sm font-medium">画像キャプション</label>
-                  <input
+                  <Label htmlFor="field" className="text-sm font-medium text-gray-700 mb-2 block">画像キャプション</Label>
+                  <Input
                     type="text"
                     value={formData.imageCaption}
                     onChange={(e) => handleInputChange('imageCaption', e.target.value)}
                     placeholder="画像の説明を入力してください"
-                    className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-organizer focus:border-transparent"
+                    className="h-10"
                   />
                 </div>
               </div>
             </div>
           )}
 
-          {/* ボタン */}
-          <div className="flex gap-3 mt-8">
+          {/* Buttons */}
+          <div className="flex gap-4 mt-10 pt-6 border-t border-gray-200">
             {currentStep > 1 && (
               <Button
                 onClick={handleBack}
-                variant="secondary"
-                className="flex-1"
+                className="flex-1 h-10 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
               >
                 戻る
               </Button>
@@ -689,15 +712,15 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
             {currentStep < 7 ? (
               <Button
                 onClick={handleNext}
-                className="flex-1 bg-organizer hover:bg-organizer-dark"
+                className="flex-1 h-10 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
               >
-                次へ
+                次へ進む
               </Button>
             ) : (
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex-1 bg-organizer hover:bg-organizer-dark"
+                className="flex-1 h-10 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? '保存中...' : eventId ? '更新する' : '作成する'}
               </Button>

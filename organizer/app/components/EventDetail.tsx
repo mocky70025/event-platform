@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/status-badge';
-import { ArrowLeft, Edit, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Users, Calendar, MapPin, Tag } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 
 interface Event {
@@ -50,7 +50,6 @@ export default function EventDetail({ eventId }: EventDetailProps) {
         return;
       }
 
-      // 主催者IDを取得
       const { data: organizerData, error: organizerError } = await supabase
         .from('organizers')
         .select('id')
@@ -59,7 +58,6 @@ export default function EventDetail({ eventId }: EventDetailProps) {
 
       if (organizerError) throw organizerError;
 
-      // イベントを取得
       const { data, error } = await supabase
         .from('events')
         .select('*')
@@ -120,10 +118,10 @@ export default function EventDetail({ eventId }: EventDetailProps) {
   if (!event) {
     return (
       <div className="min-h-screen flex items-center justify-center p-5 bg-gray-50">
-        <Card className="max-w-md">
+        <Card className="max-w-md bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
             <p className="text-gray-600 mb-4">イベントが見つかりません</p>
-            <Button onClick={() => router.push('/events')} className="bg-organizer hover:bg-organizer-dark">
+            <Button onClick={() => router.push('/events')} className="h-10 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg px-6 transition-colors">
               イベント一覧に戻る
             </Button>
           </CardContent>
@@ -134,36 +132,31 @@ export default function EventDetail({ eventId }: EventDetailProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
-      {/* ヘッダー */}
+      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
+        <div className="max-w-4xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
             <Button
               onClick={() => router.push('/events')}
-              variant="ghost"
-              size="sm"
-              className="text-gray-600"
+              className="h-9 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4" />
               戻る
             </Button>
             <div className="flex gap-2">
               <Button
                 onClick={handleEdit}
-                size="sm"
-                className="bg-organizer hover:bg-organizer-dark"
+                className="h-9 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors"
               >
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit className="h-4 w-4" />
                 編集
               </Button>
               <Button
                 onClick={handleDelete}
                 disabled={deleting}
-                size="sm"
-                variant="outline"
-                className="text-red-600 border-red-600 hover:bg-red-50"
+                className="h-9 bg-white border border-red-500 hover:bg-red-50 text-red-600 text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4" />
                 削除
               </Button>
             </div>
@@ -171,10 +164,10 @@ export default function EventDetail({ eventId }: EventDetailProps) {
         </div>
       </header>
 
-      <main className="px-4 py-4 space-y-4">
-        {/* メイン画像 */}
+      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+        {/* Main Image */}
         {event.main_image_url && (
-          <div className="w-full h-80 rounded-lg overflow-hidden">
+          <div className="w-full aspect-video rounded-xl overflow-hidden bg-gray-100">
             <img
               src={event.main_image_url}
               alt={event.event_name}
@@ -183,11 +176,11 @@ export default function EventDetail({ eventId }: EventDetailProps) {
           </div>
         )}
 
-        {/* イベント情報 */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between mb-4">
-              <h1 className="text-2xl font-bold text-gray-800">
+        {/* Event Info */}
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">
                 {event.event_name}
               </h1>
               <StatusBadge
@@ -195,84 +188,102 @@ export default function EventDetail({ eventId }: EventDetailProps) {
               />
             </div>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start">
-                <span className="text-gray-600 min-w-24">開催期間</span>
-                <span className="font-medium">
-                  {formatDate(event.event_start_date)} - {formatDate(event.event_end_date)}
-                </span>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <Calendar className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">開催期間</p>
+                  <p className="font-medium text-gray-900">
+                    {formatDate(event.event_start_date)} - {formatDate(event.event_end_date)}
+                  </p>
+                </div>
               </div>
 
               {event.display_period && (
-                <div className="flex items-start">
-                  <span className="text-gray-600 min-w-24">時間</span>
-                  <span className="font-medium">{event.display_period}</span>
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">時間</p>
+                    <p className="font-medium text-gray-900">{event.display_period}</p>
+                  </div>
                 </div>
               )}
 
               {event.event_time && (
-                <div className="flex items-start">
-                  <span className="text-gray-600 min-w-24">詳細時間</span>
-                  <span className="font-medium">{event.event_time}</span>
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">詳細時間</p>
+                    <p className="font-medium text-gray-900">{event.event_time}</p>
+                  </div>
                 </div>
               )}
 
-              <div className="flex items-start">
-                <span className="text-gray-600 min-w-24">会場</span>
-                <span className="font-medium">{event.venue_name}</span>
+              <div className="flex items-start gap-3">
+                <MapPin className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">会場</p>
+                  <p className="font-medium text-gray-900">{event.venue_name}</p>
+                </div>
               </div>
 
               {(event.prefecture || event.city || event.address) && (
-                <div className="flex items-start">
-                  <span className="text-gray-600 min-w-24">住所</span>
-                  <span className="font-medium">
-                    {event.prefecture}
-                    {event.city}
-                    {event.address}
-                  </span>
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">住所</p>
+                    <p className="font-medium text-gray-900">
+                      {event.prefecture}
+                      {event.city}
+                      {event.address}
+                    </p>
+                  </div>
                 </div>
               )}
 
               {event.genre && (
-                <div className="flex items-start">
-                  <span className="text-gray-600 min-w-24">ジャンル</span>
-                  <span className="font-medium">{event.genre}</span>
+                <div className="flex items-start gap-3">
+                  <Tag className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">ジャンル</p>
+                    <p className="font-medium text-gray-900">{event.genre}</p>
+                  </div>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* リードテキスト */}
+        {/* Lead Text */}
         {event.lead_text && (
-          <Card>
-            <CardContent className="pt-6">
-              <h2 className="text-lg font-bold mb-3">概要</h2>
-              <p className="text-gray-700 bg-gray-50 p-4 rounded leading-relaxed whitespace-pre-wrap">
+          <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">概要</h2>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {event.lead_text}
               </p>
             </CardContent>
           </Card>
         )}
 
-        {/* 説明文 */}
+        {/* Description */}
         {event.event_description && (
-          <Card>
-            <CardContent className="pt-6">
-              <h2 className="text-lg font-bold mb-3">詳細</h2>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+          <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">詳細</h2>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {event.event_description}
               </p>
             </CardContent>
           </Card>
         )}
 
-        {/* 申し込み管理ボタン */}
+        {/* Applications Button */}
         <Button
           onClick={handleApplications}
-          className="w-full bg-organizer hover:bg-organizer-dark py-6"
+          className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors"
         >
-          <Users className="h-5 w-5 mr-2" />
+          <Users className="h-5 w-5" />
           申し込み管理
         </Button>
       </main>

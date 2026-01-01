@@ -11,7 +11,7 @@ import ExhibitorProfile from './components/ExhibitorProfile';
 import ApplicationManagement from './components/ApplicationManagement';
 import NotificationBox from './components/NotificationBox';
 import LoadingSpinner from './components/LoadingSpinner';
-import { Bell, History, Search, User, Home } from 'lucide-react';
+import { Bell, History, Search, User, Home as HomeIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type View = 'home' | 'search' | 'profile' | 'applications' | 'notifications';
@@ -182,7 +182,7 @@ export default function Home() {
             currentView === 'home' ? 'text-sky-500' : 'text-gray-600'
           )}
         >
-          <Home className={cn("h-5 w-5 mb-1", currentView === 'home' && "text-sky-500")} />
+          <HomeIcon className={cn("h-5 w-5 mb-1", currentView === 'home' && "text-sky-500")} />
           <span className="text-xs font-medium">ホーム</span>
         </button>
 

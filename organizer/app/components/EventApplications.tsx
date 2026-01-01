@@ -370,7 +370,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
                     <Button
                       onClick={() => handleApprove(application.id)}
                       disabled={processing === application.id}
-                      className="flex-1 h-10 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 h-10 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {processing === application.id ? '処理中...' : '承認する'}
                     </Button>

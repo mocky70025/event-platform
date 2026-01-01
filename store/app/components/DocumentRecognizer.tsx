@@ -94,7 +94,7 @@ export default function DocumentRecognizer({
       )}
 
       {recognizedData && (
-        <Card className="mt-3 bg-blue-50 border border-blue-200">
+        <Card className="mt-3 bg-sky-50 border border-sky-200">
           <CardContent className="p-3">
             <div className="font-semibold text-sm text-gray-900 mb-2">
               認識結果:

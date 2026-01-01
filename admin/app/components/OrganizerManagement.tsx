@@ -247,7 +247,7 @@ export default function OrganizerManagement({ onUpdate }: OrganizerManagementPro
                       <Button
                         onClick={() => handleApprove(organizer.id)}
                         disabled={processing === organizer.id}
-                        className="flex-1 h-10 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 h-10 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {processing === organizer.id ? '処理中...' : '承認する'}
                       </Button>

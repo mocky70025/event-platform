@@ -272,7 +272,7 @@ export default function EventManagement({ onUpdate }: EventManagementProps) {
                         <Button
                           onClick={() => handleApprove(event.id)}
                           disabled={processing === event.id}
-                          className="flex-1 h-10 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 h-10 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {processing === event.id ? '処理中...' : '承認する'}
                         </Button>

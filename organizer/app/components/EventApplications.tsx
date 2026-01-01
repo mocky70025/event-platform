@@ -195,7 +195,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
           className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
             filterStatus === 'all'
               ? 'bg-orange-500 text-white'
-              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+              : 'bg-white border border-gray-300 hover:bg-orange-50 text-gray-700'
           }`}
         >
           すべて ({statusCounts.all})
@@ -205,7 +205,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
           className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
             filterStatus === 'pending'
               ? 'bg-orange-500 text-white'
-              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+              : 'bg-white border border-gray-300 hover:bg-orange-50 text-gray-700'
           }`}
         >
           審査中 ({statusCounts.pending})
@@ -215,7 +215,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
           className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
             filterStatus === 'approved'
               ? 'bg-orange-500 text-white'
-              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+              : 'bg-white border border-gray-300 hover:bg-orange-50 text-gray-700'
           }`}
         >
           承認済み ({statusCounts.approved})
@@ -225,7 +225,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
           className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
             filterStatus === 'rejected'
               ? 'bg-orange-500 text-white'
-              : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+              : 'bg-white border border-gray-300 hover:bg-orange-50 text-gray-700'
           }`}
         >
           却下 ({statusCounts.rejected})
@@ -272,7 +272,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
 
                 {/* Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
                     <User className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
                       <p className="text-xs text-gray-600">性別・年齢</p>
@@ -281,14 +281,14 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
                     <Phone className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
                       <p className="text-xs text-gray-600">電話番号</p>
                       <p className="font-medium text-gray-900">{application.exhibitors.phone_number}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
                     <Mail className="h-5 w-5 text-gray-600 flex-shrink-0" />
                     <div>
                       <p className="text-xs text-gray-600">メール</p>
@@ -298,7 +298,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
                     </div>
                   </div>
                   {application.exhibitors.genre_category && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
                       <Tag className="h-5 w-5 text-gray-600 flex-shrink-0" />
                       <div>
                         <p className="text-xs text-gray-600">ジャンル</p>
@@ -312,7 +312,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
 
                 {/* Genre Details */}
                 {application.exhibitors.genre_free_text && (
-                  <div className="mb-5 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="mb-5 p-4 bg-orange-50 rounded-lg border border-gray-200">
                     <h4 className="text-sm font-medium text-gray-700 mb-2">ジャンル詳細</h4>
                     <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                       {application.exhibitors.genre_free_text}
@@ -349,7 +349,7 @@ export default function EventApplications({ eventId }: EventApplicationsProps) {
                               className="w-full h-24 object-cover"
                             />
                           </div>
-                          <div className="p-2 bg-gray-50 text-xs text-center font-medium text-gray-700">
+                          <div className="p-2 bg-orange-50 text-xs text-center font-medium text-gray-700">
                             {doc.label}
                           </div>
                         </a>

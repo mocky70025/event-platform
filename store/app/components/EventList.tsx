@@ -153,14 +153,14 @@ export default function EventList() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-sky-50">
         <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-sky-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-sky-50 pb-20">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 py-6">
@@ -183,7 +183,7 @@ export default function EventList() {
             
             <Button
               onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className="h-10 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors"
+              className="h-10 bg-white border border-gray-300 hover:bg-sky-50 text-gray-700 text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors"
             >
               <SlidersHorizontal className="w-4 h-4" />
               <span className="hidden md:inline">フィルター</span>
@@ -215,7 +215,7 @@ export default function EventList() {
                 className={`p-2 transition-colors ${
                   viewMode === 'grid'
                     ? 'bg-sky-500 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-600 hover:bg-sky-50'
                 }`}
               >
                 <Grid3x3 className="w-5 h-5" />
@@ -225,7 +225,7 @@ export default function EventList() {
                 className={`p-2 transition-colors ${
                   viewMode === 'list'
                     ? 'bg-sky-500 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-600 hover:bg-sky-50'
                 }`}
               >
                 <List className="w-5 h-5" />
@@ -352,7 +352,7 @@ export default function EventList() {
             <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
               <Button
                 onClick={clearFilters}
-                className="flex-1 h-10 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                className="flex-1 h-10 bg-white border border-gray-300 hover:bg-sky-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
               >
                 クリア
               </Button>

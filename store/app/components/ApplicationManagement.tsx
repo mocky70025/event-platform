@@ -98,7 +98,7 @@ export default function ApplicationManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-sky-50">
         <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-sky-500"></div>
       </div>
     );
@@ -112,7 +112,7 @@ export default function ApplicationManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-sky-50 pb-20">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-6">
@@ -157,7 +157,7 @@ export default function ApplicationManagement() {
             className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
               filterStatus === 'all'
                 ? 'bg-sky-500 text-white'
-                : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+                : 'bg-white border border-gray-300 hover:bg-sky-50 text-gray-700'
             }`}
           >
             すべて ({statusCounts.all})
@@ -167,7 +167,7 @@ export default function ApplicationManagement() {
             className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
               filterStatus === 'pending'
                 ? 'bg-sky-500 text-white'
-                : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+                : 'bg-white border border-gray-300 hover:bg-sky-50 text-gray-700'
             }`}
           >
             審査中 ({statusCounts.pending})
@@ -177,7 +177,7 @@ export default function ApplicationManagement() {
             className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
               filterStatus === 'approved'
                 ? 'bg-sky-500 text-white'
-                : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+                : 'bg-white border border-gray-300 hover:bg-sky-50 text-gray-700'
             }`}
           >
             承認済み ({statusCounts.approved})
@@ -187,7 +187,7 @@ export default function ApplicationManagement() {
             className={`px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
               filterStatus === 'rejected'
                 ? 'bg-sky-500 text-white'
-                : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+                : 'bg-white border border-gray-300 hover:bg-sky-50 text-gray-700'
             }`}
           >
             却下 ({statusCounts.rejected})
@@ -249,7 +249,7 @@ export default function ApplicationManagement() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-sky-50 rounded-lg">
                       <Calendar className="h-5 w-5 text-gray-600 flex-shrink-0" />
                       <div>
                         <p className="text-xs text-gray-600">開催期間</p>
@@ -261,7 +261,7 @@ export default function ApplicationManagement() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-sky-50 rounded-lg">
                       <MapPin className="h-5 w-5 text-gray-600 flex-shrink-0" />
                       <div>
                         <p className="text-xs text-gray-600">会場</p>

@@ -118,14 +118,14 @@ export default function EventManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-orange-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-orange-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-orange-50">
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -207,21 +207,21 @@ export default function EventManagement() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button
               onClick={() => router.push('/event/new')}
-              className="h-auto py-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
+              className="h-auto py-5 bg-white border border-gray-200 hover:bg-orange-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
             >
               <Plus className="w-5 h-5" />
               <span className="text-sm font-medium">イベント作成</span>
             </Button>
             <Button
               onClick={() => router.push('/applications')}
-              className="h-auto py-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
+              className="h-auto py-5 bg-white border border-gray-200 hover:bg-orange-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
             >
               <FileCheck className="w-5 h-5" />
               <span className="text-sm font-medium">応募者管理</span>
             </Button>
             <Button
               onClick={() => router.push('/analytics')}
-              className="h-auto py-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
+              className="h-auto py-5 bg-white border border-gray-200 hover:bg-orange-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
             >
               <BarChart3 className="w-5 h-5" />
               <span className="text-sm font-medium">統計</span>

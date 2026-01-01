@@ -105,7 +105,7 @@ export default function VerifyEmailPage() {
   }, [searchParams, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-orange-50 p-6">
       <Card className="max-w-md w-full bg-white border border-gray-200 rounded-xl shadow-sm">
         <CardContent className="p-8 text-center">
           {status === 'verifying' && (

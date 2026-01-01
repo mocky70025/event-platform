@@ -107,7 +107,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-sky-50">
         <LoadingSpinner />
       </div>
     );
@@ -170,7 +170,7 @@ export default function Home() {
   }, [user]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 pb-16">
+    <div className="min-h-screen flex flex-col bg-sky-50 pb-16">
       {renderContent()}
 
       {/* Bottom Navigation */}

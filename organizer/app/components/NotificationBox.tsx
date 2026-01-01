@@ -115,14 +115,14 @@ export default function NotificationBox() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-orange-50">
         <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-orange-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-orange-50 pb-20">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-6">
@@ -136,7 +136,7 @@ export default function NotificationBox() {
             {unreadCount > 0 && (
               <Button
                 onClick={markAllAsRead}
-                className="h-9 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors"
+                className="h-9 bg-white border border-gray-300 hover:bg-orange-50 text-gray-700 text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors"
               >
                 <CheckCheck className="w-4 h-4" />
                 すべて既読

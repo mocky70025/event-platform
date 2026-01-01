@@ -65,7 +65,7 @@ export default function UpdatePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-orange-50 p-6">
       <div className="max-w-md mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">

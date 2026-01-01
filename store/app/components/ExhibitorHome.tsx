@@ -166,21 +166,21 @@ export default function ExhibitorHome() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Button
                 onClick={() => setActiveTab('events')}
-                className="h-auto py-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
+                className="h-auto py-5 bg-white border border-gray-200 hover:bg-sky-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
               >
                 <SearchIcon className="w-5 h-5" />
                 <span className="text-sm font-medium">イベント検索</span>
               </Button>
               <Button
                 onClick={() => setActiveTab('applications')}
-                className="h-auto py-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
+                className="h-auto py-5 bg-white border border-gray-200 hover:bg-sky-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
               >
                 <FileCheck className="w-5 h-5" />
                 <span className="text-sm font-medium">申し込み履歴</span>
               </Button>
               <Button
                 onClick={() => setActiveTab('notifications')}
-                className="h-auto py-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors relative"
+                className="h-auto py-5 bg-white border border-gray-200 hover:bg-sky-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors relative"
               >
                 <Bell className="w-5 h-5" />
                 <span className="text-sm font-medium">通知</span>
@@ -192,7 +192,7 @@ export default function ExhibitorHome() {
               </Button>
               <Button
                 onClick={() => setActiveTab('profile')}
-                className="h-auto py-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
+                className="h-auto py-5 bg-white border border-gray-200 hover:bg-sky-50 text-gray-700 rounded-xl flex flex-col items-center gap-2 transition-colors"
               >
                 <Settings className="w-5 h-5" />
                 <span className="text-sm font-medium">設定</span>
@@ -231,14 +231,14 @@ export default function ExhibitorHome() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-sky-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-sky-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-sky-50">
       {/* Main Content */}
       <main className="pb-20">
         {renderContent()}

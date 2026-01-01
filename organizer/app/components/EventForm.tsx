@@ -286,7 +286,7 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
 
   if (error && !organizerId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-5 bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center p-5 bg-orange-50">
         <Card className="max-w-md bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6 text-center">
             <p className="text-red-600 mb-4">{error}</p>
@@ -300,7 +300,7 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 pb-20">
+    <div className="min-h-screen bg-orange-50 p-6 pb-20">
       <Card className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-xl shadow-sm">
         <CardContent className="pt-8 pb-8 px-6 md:px-10">
           <div className="text-center mb-8">
@@ -704,7 +704,7 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
             {currentStep > 1 && (
               <Button
                 onClick={handleBack}
-                className="flex-1 h-10 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                className="flex-1 h-10 bg-white border border-gray-300 hover:bg-orange-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
               >
                 戻る
               </Button>

@@ -51,7 +51,7 @@ export default function AuthCallback() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="min-h-screen flex items-center justify-center bg-sky-50 p-6">
         <Card className="max-w-md w-full bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="p-6 text-center">
             <div className="flex justify-center mb-4">
@@ -71,7 +71,7 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-sky-50">
       <LoadingSpinner />
     </div>
   );

@@ -48,7 +48,7 @@ export default function ImageUpload({
         {label}
         {required && <span className="text-red-600"> *</span>}
       </label>
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-5 text-center bg-gray-50 hover:bg-gray-100 transition-colors">
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-5 text-center bg-sky-50 hover:bg-gray-100 transition-colors">
         {preview ? (
           <div>
             <img

@@ -110,7 +110,7 @@ export default function RegistrationForm() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50">
         <LoadingSpinner />
         <p className="mt-4 text-sm text-gray-600">登録処理中...</p>
       </div>
@@ -118,7 +118,7 @@ export default function RegistrationForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 pb-20">
+    <div className="min-h-screen bg-orange-50 p-6 pb-20">
       <Card className="max-w-3xl mx-auto bg-white border border-gray-200 rounded-xl shadow-sm">
         <CardContent className="pt-8 pb-8 px-6 md:px-10">
           <div className="text-center mb-8">
@@ -208,7 +208,7 @@ export default function RegistrationForm() {
             <div className="space-y-6 mt-8">
               <h2 className="text-lg font-semibold text-gray-900">利用規約確認</h2>
 
-              <div className="p-5 bg-gray-50 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
+              <div className="p-5 bg-orange-50 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
                 <h3 className="text-base font-semibold mb-3 text-gray-900">利用規約</h3>
                 <div className="text-sm leading-relaxed text-gray-600 space-y-3">
                   <p>本サービスをご利用いただくにあたり、以下の利用規約に同意していただく必要があります。</p>
@@ -233,7 +233,7 @@ export default function RegistrationForm() {
             {currentStep > 1 && (
               <Button
                 onClick={handleBack}
-                className="flex-1 h-10 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                className="flex-1 h-10 bg-white border border-gray-300 hover:bg-orange-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
               >
                 戻る
               </Button>

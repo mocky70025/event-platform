@@ -76,7 +76,7 @@ export default function ExhibitorProfile() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">読み込み中...</div>
+        <div className="animate-pulse text-[#5DABA8] font-medium">読み込み中...</div>
       </div>
     );
   }
@@ -84,12 +84,18 @@ export default function ExhibitorProfile() {
   if (!exhibitor) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md shadow-xl">
           <CardContent className="pt-6 text-center">
-            <p className="text-gray-600 mb-4">出店者情報が登録されていません</p>
+            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              出店者情報が登録されていません
+            </h3>
+            <p className="text-gray-600 mb-6">
+              情報を登録してイベントに申し込みましょう
+            </p>
             <Button
               onClick={() => router.push('/register')}
-              className="bg-store hover:bg-store-dark"
+              className="bg-[#5DABA8] hover:bg-[#4A9693]"
             >
               情報を登録する
             </Button>
@@ -100,125 +106,160 @@ export default function ExhibitorProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-800">プロフィール</h1>
-          <Button
-            onClick={() => router.push('/profile/edit')}
-            size="sm"
-            className="bg-store hover:bg-store-dark"
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            編集
-          </Button>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            プロフィール
+          </h1>
+          <p className="text-gray-600">
+            あなたの情報と登録書類
+          </p>
         </div>
       </header>
 
-      <main className="px-4 py-4 space-y-4">
-        {/* 基本情報 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>基本情報</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
-              <span className="text-gray-600">名前</span>
-              <span className="font-medium">{exhibitor.name}</span>
-            </div>
-            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
-              <span className="text-gray-600">性別</span>
-              <span className="font-medium">{exhibitor.gender}</span>
-            </div>
-            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
-              <span className="text-gray-600">年齢</span>
-              <span className="font-medium">{exhibitor.age}歳</span>
-            </div>
-            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
-              <span className="text-gray-600">電話番号</span>
-              <span className="font-medium">{exhibitor.phone_number}</span>
-            </div>
-            <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
-              <span className="text-gray-600">メール</span>
-              <span className="font-medium break-all">{exhibitor.email}</span>
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* プロフィールヘッダー */}
+        <Card className="mb-6 shadow-lg">
+          <CardContent className="p-8">
+            <div className="flex items-center gap-6 mb-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#7FCAC5] to-[#5DABA8] flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                {exhibitor.name[0]}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  {exhibitor.name}
+                </h2>
+                <p className="text-gray-600 mb-3">{exhibitor.email}</p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="border-2 border-[#5DABA8] text-[#5DABA8] hover:bg-[#F0F9F9]"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    プロフィール編集
+                  </Button>
+                  <Button
+                    onClick={handleSignOut}
+                    variant="outline"
+                    className="border-2 text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    ログアウト
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* ジャンル情報 */}
-        {(exhibitor.genre_category || exhibitor.genre_free_text) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>ジャンル情報</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {exhibitor.genre_category && (
-                <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
-                  <span className="text-gray-600">カテゴリ</span>
-                  <span className="font-medium">{exhibitor.genre_category}</span>
-                </div>
-              )}
-              {exhibitor.genre_free_text && (
-                <div className="text-sm">
-                  <span className="text-gray-600 block mb-1">詳細</span>
-                  <p className="font-medium whitespace-pre-wrap">
-                    {exhibitor.genre_free_text}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        {/* 基本情報 */}
+        <Card className="mb-6 shadow-lg">
+          <CardHeader className="border-b">
+            <CardTitle className="text-2xl">基本情報</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-sm font-medium text-gray-500 block mb-1">
+                  氏名
+                </label>
+                <p className="text-lg font-semibold text-gray-900">
+                  {exhibitor.name}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500 block mb-1">
+                  性別
+                </label>
+                <p className="text-lg font-semibold text-gray-900">
+                  {exhibitor.gender}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500 block mb-1">
+                  年齢
+                </label>
+                <p className="text-lg font-semibold text-gray-900">
+                  {exhibitor.age}歳
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500 block mb-1">
+                  電話番号
+                </label>
+                <p className="text-lg font-semibold text-gray-900">
+                  {exhibitor.phone_number}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500 block mb-1">
+                  ジャンル
+                </label>
+                <p className="text-lg font-semibold text-gray-900">
+                  {exhibitor.genre_category || exhibitor.genre_free_text || '未設定'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 登録書類 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>登録書類</CardTitle>
+        <Card className="shadow-lg">
+          <CardHeader className="border-b">
+            <CardTitle className="text-2xl">登録書類</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
+          <CardContent className="p-6">
+            <div className="space-y-4">
               {Object.entries(documentLabels).map(([key, label]) => {
-                const url = exhibitor[key as keyof ExhibitorData] as string | null;
+                const url = exhibitor[key as keyof ExhibitorData];
+                const hasDocument = Boolean(url);
+                
                 return (
-                  <div key={key} className="border border-gray-200 rounded-lg overflow-hidden">
-                    {url ? (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block"
-                      >
-                        <img
-                          src={url}
-                          alt={label}
-                          className="w-full h-32 object-cover"
-                        />
-                        <div className="p-2 bg-gray-50 text-xs text-center text-gray-700">
-                          {label}
+                  <div
+                    key={key}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {hasDocument ? (
+                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                          <span className="text-2xl">✓</span>
                         </div>
-                      </a>
-                    ) : (
-                      <div className="h-32 flex items-center justify-center bg-gray-100">
-                        <FileText className="h-8 w-8 text-gray-400" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-gray-400" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-semibold text-gray-900">{label}</p>
+                        <p className="text-sm text-gray-600">
+                          {hasDocument ? '登録済み' : '未登録'}
+                        </p>
                       </div>
+                    </div>
+                    {hasDocument && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-2 border-[#5DABA8] text-[#5DABA8] hover:bg-[#F0F9F9]"
+                      >
+                        確認
+                      </Button>
                     )}
                   </div>
                 );
               })}
             </div>
+            <div className="mt-6">
+              <Button
+                className="w-full bg-[#5DABA8] hover:bg-[#4A9693]"
+              >
+                書類を更新
+              </Button>
+            </div>
           </CardContent>
         </Card>
-
-        {/* ログアウトボタン */}
-        <Button
-          onClick={handleSignOut}
-          variant="outline"
-          className="w-full text-red-600 border-red-600 hover:bg-red-50"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          ログアウト
-        </Button>
       </main>
     </div>
   );

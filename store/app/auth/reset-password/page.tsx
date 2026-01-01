@@ -1,178 +1,116 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { supabase } from '../../../lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react';
+import { supabase } from '../../../lib/supabase';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function ResetPasswordPage() {
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  const router = useRouter()
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const router = useRouter();
 
   const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    setMessage('')
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setMessage('');
 
     try {
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '')
-      const redirectUrl = `${appUrl}/auth/update-password`
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
+      const redirectUrl = `${appUrl}/auth/update-password`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
-      setMessage('パスワードリセット用のメールを送信しました。メール内のリンクから新しいパスワードを設定してください。')
+      setMessage('パスワードリセット用のメールを送信しました。メール内のリンクから新しいパスワードを設定してください。');
     } catch (err: any) {
-      console.error('Password reset error:', err)
-      setError(err.message || 'パスワードリセットに失敗しました')
+      console.error('Password reset error:', err);
+      setError(err.message || 'パスワードリセットに失敗しました');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div style={{ background: '#F7F7F7', minHeight: '100vh' }}>
-      <div className="container mx-auto" style={{ padding: '9px 16px', maxWidth: '394px' }}>
-        <div style={{ paddingTop: '24px', marginBottom: '24px' }}>
-          <button
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-md mx-auto">
+        <div className="mb-6">
+          <Button
             onClick={() => router.push('/')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '16px',
-              color: '#06C755',
-              cursor: 'pointer',
-              marginBottom: '16px'
-            }}
+            variant="ghost"
+            className="h-9 text-sm text-gray-600 hover:text-gray-900 mb-4"
           >
-            ← 戻る
-          </button>
-          <h1 style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '20px',
-            fontWeight: 700,
-            lineHeight: '120%',
-            color: '#000000',
-            marginBottom: '24px'
-          }}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            戻る
+          </Button>
+          <h1 className="text-2xl font-bold text-gray-900">
             パスワードをリセット
           </h1>
         </div>
 
-        <div style={{
-          background: '#FFFFFF',
-          boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '24px'
-        }}>
-          {message ? (
-            <div style={{
-              padding: '16px',
-              background: '#E6F7ED',
-              borderRadius: '8px',
-              marginBottom: '16px'
-            }}>
-              <p style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '14px',
-                lineHeight: '150%',
-                color: '#06C755'
-              }}>
-                {message}
-              </p>
-            </div>
-          ) : (
-            <>
-              <p style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '14px',
-                lineHeight: '150%',
-                color: '#666666',
-                marginBottom: '24px'
-              }}>
-                登録済みのメールアドレスを入力してください。パスワードリセット用のリンクを送信します。
-              </p>
-
-              {error && (
-                <div style={{
-                  padding: '12px',
-                  background: '#FFEBEE',
-                  borderRadius: '8px',
-                  marginBottom: '16px'
-                }}>
-                  <p style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '14px',
-                    color: '#C62828'
-                  }}>
-                    {error}
-                  </p>
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
+          <CardContent className="p-6">
+            {message ? (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-green-700">{message}</p>
                 </div>
-              )}
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-6">
+                  登録済みのメールアドレスを入力してください。パスワードリセット用のリンクを送信します。
+                </p>
 
-              <form onSubmit={handleResetPassword}>
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    lineHeight: '120%',
-                    color: '#000000',
-                    marginBottom: '8px',
-                    display: 'block'
-                  }}>
-                    メールアドレス
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '1px solid #E5E5E5',
-                      borderRadius: '8px',
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '16px',
-                      boxSizing: 'border-box'
-                    }}
-                    placeholder="your@example.com"
-                  />
-                </div>
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  </div>
+                )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    width: '100%',
-                    padding: '16px 24px',
-                    background: loading ? '#CCCCCC' : '#06C755',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    color: '#FFFFFF',
-                    cursor: loading ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {loading ? '送信中...' : 'リセット用メールを送信'}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
+                <form onSubmit={handleResetPassword} className="space-y-5">
+                  <div>
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700 mb-2 block">
+                      メールアドレス
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      placeholder="your@example.com"
+                      className="h-10"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-10 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? '送信中...' : 'リセット用メールを送信'}
+                  </Button>
+                </form>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
-  )
+  );
 }
-

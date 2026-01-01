@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { Card, CardContent } from './ui/card';
+import { Button } from './ui/button';
+import { AlertCircle } from 'lucide-react';
 
 export default function AuthCallback() {
   const searchParams = useSearchParams();
@@ -24,11 +27,7 @@ export default function AuthCallback() {
       }
 
       if (code) {
-        // LINE認証の場合、バックエンドで処理する必要があります
-        // ここでは簡易的にリダイレクトのみ
         try {
-          // LINE認証の処理は、実際の実装ではバックエンドAPIで行う必要があります
-          // ここでは一旦ホームにリダイレクト
           router.push('/');
         } catch (err) {
           setError('認証処理に失敗しました');
@@ -37,7 +36,6 @@ export default function AuthCallback() {
           }, 2000);
         }
       } else {
-        // Supabase認証のコールバック処理
         supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_IN' && session) {
             router.push('/');
@@ -53,35 +51,28 @@ export default function AuthCallback() {
 
   if (error) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-      }}>
-        <div style={{
-          padding: '20px',
-          backgroundColor: '#fee',
-          color: '#c33',
-          borderRadius: '8px',
-        }}>
-          {error}
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <Card className="max-w-md w-full bg-white border border-gray-200 rounded-xl shadow-sm">
+          <CardContent className="p-6 text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-red-500" />
+            </div>
+            <p className="text-sm text-red-600 mb-4">{error}</p>
+            <Button
+              onClick={() => router.push('/')}
+              className="h-10 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg px-6 transition-colors"
+            >
+              ホームに戻る
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <LoadingSpinner />
     </div>
   );
 }
-

@@ -99,7 +99,7 @@ export default function WelcomeScreen() {
           )}
 
           {/* Email Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-5 mb-6">
+          <form onSubmit={handleEmailAuth} className="space-y-5 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 メールアドレス
@@ -139,7 +139,7 @@ export default function WelcomeScreen() {
           </form>
 
           {/* Divider */}
-          <div className="relative my-6">
+          <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200"></div>
             </div>

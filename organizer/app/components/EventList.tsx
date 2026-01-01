@@ -5,6 +5,10 @@ import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import EventDetail from './EventDetail';
 import LoadingSpinner from './LoadingSpinner';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
+import { StatusBadge } from '@/components/status-badge';
+import { Plus, Calendar, MapPin } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -91,7 +95,7 @@ export default function EventList({ onCreateEvent, onEditEvent }: EventListProps
 
   if (loading) {
     return (
-      <div style={{ padding: '20px' }}>
+      <div className="p-5">
         <LoadingSpinner />
       </div>
     );
@@ -102,184 +106,84 @@ export default function EventList({ onCreateEvent, onEditEvent }: EventListProps
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      paddingBottom: '80px',
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        padding: '16px',
-        borderBottom: '1px solid #e0e0e0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-        }}>
-          <h1 style={{
-            fontSize: '20px',
-            fontWeight: 'bold',
-          }}>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="bg-white border-b border-gray-200 p-4 sticky top-0 z-50">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold text-gray-900">
             イベント管理
           </h1>
-          <button
+          <Button
             onClick={onCreateEvent}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#FF6B35',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-            }}
+            className="h-9 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors"
           >
-            + 新規作成
-          </button>
+            <Plus className="h-4 w-4" />
+            新規作成
+          </Button>
         </div>
       </div>
 
-      <div style={{
-        padding: '20px',
-      }}>
+      <div className="p-5">
         {error && (
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '8px',
-            marginBottom: '16px',
-          }}>
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {events.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '40px 20px',
-            color: '#999',
-          }}>
-            <div style={{
-              fontSize: '48px',
-              marginBottom: '16px',
-            }}>📅</div>
-            <div style={{
-              fontSize: '16px',
-              marginBottom: '20px',
-            }}>
+          <div className="text-center py-10 px-5 text-gray-500">
+            <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+            <div className="text-base mb-5">
               イベントがありません
             </div>
-            <button
+            <Button
               onClick={onCreateEvent}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#FF6B35',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-              }}
+              className="h-10 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg px-6 transition-colors"
             >
               最初のイベントを作成
-            </button>
+            </Button>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gap: '16px',
-          }}>
+          <div className="grid gap-4">
             {events.map((event) => (
-              <div
+              <Card
                 key={event.id}
                 onClick={() => setSelectedEvent(event)}
-                style={{
-                  backgroundColor: 'white',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
+                className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform hover:-translate-y-0.5"
               >
                 {event.main_image_url && (
-                  <div style={{
-                    width: '100%',
-                    height: '200px',
-                    backgroundImage: `url(${event.main_image_url})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  }} />
+                  <div
+                    className="w-full h-48 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${event.main_image_url})` }}
+                  />
                 )}
-                <div style={{ padding: '16px' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    marginBottom: '8px',
-                    color: '#333',
-                  }}>
-                    {event.event_name}
-                  </h3>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#666',
-                    marginBottom: '8px',
-                  }}>
-                    📅 {new Date(event.event_start_date).toLocaleDateString('ja-JP')} - {new Date(event.event_end_date).toLocaleDateString('ja-JP')}
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {event.event_name}
+                    </h3>
+                    {event.approval_status && (
+                      <StatusBadge
+                        status={event.approval_status === 'approved' ? 'approved' : 'pending'}
+                      />
+                    )}
                   </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#666',
-                    marginBottom: '8px',
-                  }}>
-                    📍 {event.venue_name}
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      {new Date(event.event_start_date).toLocaleDateString('ja-JP')} - {new Date(event.event_end_date).toLocaleDateString('ja-JP')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <MapPin className="h-4 w-4" />
+                    <span>{event.venue_name}</span>
                   </div>
                   {event.lead_text && (
-                    <div style={{
-                      fontSize: '14px',
-                      color: '#999',
-                      marginTop: '8px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                    }}>
+                    <div className="text-sm text-gray-500 mt-2 line-clamp-2">
                       {event.lead_text}
                     </div>
                   )}
-                  {event.approval_status && (
-                    <div style={{
-                      marginTop: '12px',
-                    }}>
-                      <span style={{
-                        padding: '4px 12px',
-                        backgroundColor: event.approval_status === 'approved' ? '#27ae60' : '#f39c12',
-                        color: 'white',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                      }}>
-                        {event.approval_status === 'approved' ? '承認済み' : '審査中'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
@@ -287,4 +191,3 @@ export default function EventList({ onCreateEvent, onEditEvent }: EventListProps
     </div>
   );
 }
-

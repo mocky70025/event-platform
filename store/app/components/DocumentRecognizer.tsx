@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Search, Loader2, AlertCircle } from 'lucide-react';
 
 interface DocumentRecognizerProps {
   imageUrl: string;
@@ -65,88 +68,43 @@ export default function DocumentRecognizer({
   };
 
   return (
-    <div style={{ marginTop: '12px' }}>
-      <button
+    <div className="mt-3">
+      <Button
         onClick={handleRecognize}
         disabled={recognizing || !imageUrl}
-        style={{
-          padding: '8px 16px',
-          backgroundColor: recognizing ? '#ccc' : '#5DABA8',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          fontSize: '14px',
-          cursor: recognizing || !imageUrl ? 'not-allowed' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
+        className="h-9 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg px-4 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {recognizing ? (
           <>
             <span>認識中...</span>
-            <div style={{
-              width: '16px',
-              height: '16px',
-              border: '2px solid #fff',
-              borderTop: '2px solid transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-            }} />
+            <Loader2 className="h-4 w-4 animate-spin" />
           </>
         ) : (
           <>
-            <span>🔍</span>
+            <Search className="h-4 w-4" />
             <span>{getDocumentTypeLabel()}を認識</span>
           </>
         )}
-      </button>
+      </Button>
 
       {error && (
-        <div style={{
-          marginTop: '8px',
-          padding: '8px',
-          backgroundColor: '#fee',
-          color: '#c33',
-          borderRadius: '4px',
-          fontSize: '12px',
-        }}>
+        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
           {error}
         </div>
       )}
 
       {recognizedData && (
-        <div style={{
-          marginTop: '12px',
-          padding: '12px',
-          backgroundColor: '#f0f8ff',
-          borderRadius: '4px',
-          fontSize: '14px',
-        }}>
-          <div style={{
-            fontWeight: 'bold',
-            marginBottom: '8px',
-          }}>
-            認識結果:
-          </div>
-          <pre style={{
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            fontSize: '12px',
-            margin: 0,
-          }}>
-            {JSON.stringify(recognizedData, null, 2)}
-          </pre>
-        </div>
+        <Card className="mt-3 bg-blue-50 border border-blue-200">
+          <CardContent className="p-3">
+            <div className="font-semibold text-sm text-gray-900 mb-2">
+              認識結果:
+            </div>
+            <pre className="whitespace-pre-wrap break-words text-xs text-gray-700 m-0">
+              {JSON.stringify(recognizedData, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
       )}
-
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
-

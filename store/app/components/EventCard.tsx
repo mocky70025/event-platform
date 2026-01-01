@@ -1,5 +1,9 @@
 'use client';
 
+import { Calendar, MapPin } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+
 interface EventCardProps {
   event: {
     id: string;
@@ -21,72 +25,37 @@ export default function EventCard({ event, onClick }: EventCardProps) {
   };
 
   return (
-    <div
+    <Card
       onClick={onClick}
-      style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        cursor: 'pointer',
-        transition: 'transform 0.2s',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-2px)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-      }}
+      className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform hover:-translate-y-0.5"
     >
       {event.main_image_url && (
-        <div style={{
-          width: '100%',
-          height: '200px',
-          backgroundImage: `url(${event.main_image_url})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }} />
+        <div
+          className="w-full h-48 bg-cover bg-center"
+          style={{ backgroundImage: `url(${event.main_image_url})` }}
+        />
       )}
-      <div style={{ padding: '16px' }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: 'bold',
-          marginBottom: '8px',
-          color: '#333',
-        }}>
+      <CardContent className="p-4">
+        <h3 className="text-lg font-bold mb-2 text-gray-900">
           {event.event_name}
         </h3>
-        <div style={{
-          fontSize: '14px',
-          color: '#666',
-          marginBottom: '8px',
-        }}>
-          📅 {formatDate(event.event_start_date)} - {formatDate(event.event_end_date)}
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+          <Calendar className="h-4 w-4" />
+          <span>{formatDate(event.event_start_date)} - {formatDate(event.event_end_date)}</span>
         </div>
-        <div style={{
-          fontSize: '14px',
-          color: '#666',
-          marginBottom: '8px',
-        }}>
-          📍 {event.venue_name}
-          {event.venue_city && ` (${event.venue_city})`}
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+          <MapPin className="h-4 w-4" />
+          <span>
+            {event.venue_name}
+            {event.venue_city && ` (${event.venue_city})`}
+          </span>
         </div>
         {event.lead_text && (
-          <div style={{
-            fontSize: '14px',
-            color: '#999',
-            marginTop: '8px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}>
+          <div className="text-sm text-gray-500 mt-2 line-clamp-2">
             {event.lead_text}
           </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
-

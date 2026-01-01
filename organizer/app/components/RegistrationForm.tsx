@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import ProgressBar from './ProgressBar';
-import LoadingSpinner from './LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -107,25 +106,32 @@ export default function RegistrationForm() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#E58A7B] border-t-transparent mb-4"></div>
+        <p className="text-[#E58A7B] font-medium">登録処理中...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-5 bg-gray-50">
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="pt-6">
-          <h1 className="text-2xl font-bold mb-5 text-center">
-            主催者情報登録
-          </h1>
+    <div className="min-h-screen p-5 bg-gradient-to-b from-gray-50 to-gray-100 pb-20">
+      <Card className="max-w-3xl mx-auto shadow-2xl border-t-4 border-[#E58A7B]">
+        <CardContent className="pt-8 pb-8 px-6 md:px-10">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2 text-gray-900">
+              主催者情報登録
+            </h1>
+            <p className="text-gray-600">
+              ステップ {currentStep} / 2
+            </p>
+          </div>
 
           <ProgressBar currentStep={currentStep} totalSteps={2} />
 
           {error && (
-            <div className="p-3 mb-5 bg-red-50 text-red-700 rounded text-sm">
-              {error}
+            <div className="p-4 mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r text-sm flex items-start gap-3 animate-in slide-in-from-top">
+              <span className="text-xl">⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
@@ -220,29 +226,29 @@ export default function RegistrationForm() {
             </div>
           )}
 
-          <div className="flex gap-3 mt-8">
+          <div className="flex gap-4 mt-10 pt-6 border-t">
             {currentStep > 1 && (
               <Button
                 onClick={handleBack}
-                variant="secondary"
-                className="flex-1"
+                variant="outline"
+                className="flex-1 h-12 text-base border-2 border-gray-300 hover:bg-gray-50"
               >
-                戻る
+                ← 戻る
               </Button>
             )}
             {currentStep < 2 ? (
               <Button
                 onClick={handleNext}
-                className="flex-1 bg-organizer hover:bg-organizer-dark"
+                className="flex-1 h-12 text-base font-semibold bg-[#E58A7B] hover:bg-[#D4796A] shadow-lg hover:shadow-xl transition-all"
               >
-                次へ
+                次へ進む →
               </Button>
             ) : (
               <Button
                 onClick={handleSubmit}
-                className="flex-1 bg-organizer hover:bg-organizer-dark"
+                className="flex-1 h-12 text-base font-semibold bg-gradient-to-r from-[#E58A7B] to-[#D4796A] hover:from-[#D4796A] hover:to-[#C3685A] shadow-lg hover:shadow-xl transition-all"
               >
-                登録する
+                ✓ 登録を完了する
               </Button>
             )}
           </div>

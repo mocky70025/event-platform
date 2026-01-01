@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
+import { Card, CardContent } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import { AlertCircle } from 'lucide-react';
 
 export default function AuthCallback() {

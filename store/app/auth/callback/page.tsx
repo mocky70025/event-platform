@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import { supabase } from '../../../lib/supabase';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 export default function AuthCallback() {
   const searchParams = useSearchParams();

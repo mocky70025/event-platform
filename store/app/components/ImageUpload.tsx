@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import DocumentRecognizer from './DocumentRecognizer';
+import { Button } from '@/components/ui/button';
 
 interface ImageUploadProps {
   label: string;

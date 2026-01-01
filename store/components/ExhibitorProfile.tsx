@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { getPublicUrl } from '@/lib/storage'
-import ExhibitorEditForm from './ExhibitorEditForm'
+// import ExhibitorEditForm from '@/app/components/ExhibitorEditForm'
 
 interface ExhibitorProfileProps {
   userProfile: any
@@ -109,11 +108,13 @@ export default function ExhibitorProfile({ userProfile, onBack }: ExhibitorProfi
     if (parts.length >= 2) {
       const bucket = parts[0]
       const path = parts.slice(1).join('/')
-      return getPublicUrl(bucket, path)
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+      return data.publicUrl
     }
     
-    // パスがbucket名を含まない場合は、exhibitor-documentsバケットを想定
-    return getPublicUrl('exhibitor-documents', url)
+    // パスがbucket名を含まない場合は、documentsバケットを想定
+    const { data } = supabase.storage.from('documents').getPublicUrl(url)
+    return data.publicUrl
   }
 
   const handleUpdateComplete = (updatedData: ExhibitorData) => {
@@ -162,12 +163,10 @@ export default function ExhibitorProfile({ userProfile, onBack }: ExhibitorProfi
 
   if (isEditing && exhibitorData) {
     return (
-      <ExhibitorEditForm
-        exhibitorData={exhibitorData}
-        userProfile={userProfile}
-        onUpdateComplete={handleUpdateComplete}
-        onCancel={() => setIsEditing(false)}
-      />
+      <div>
+        <p>編集機能は一時的に無効化されています。</p>
+        <button onClick={() => setIsEditing(false)}>戻る</button>
+      </div>
     )
   }
 

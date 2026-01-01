@@ -135,7 +135,7 @@ export default function Home() {
       case 'notifications':
         return <NotificationBox />;
       case 'applications':
-        return <EventApplications />;
+        return <div className="p-4">申し込み管理は各イベント詳細ページから利用できます。</div>;
       default:
         return <EventManagement />;
     }

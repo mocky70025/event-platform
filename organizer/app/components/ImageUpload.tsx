@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import DocumentRecognizer from './DocumentRecognizer';
+import { Button } from '@/components/ui/button';
 
 interface ImageUploadProps {
   label: string;
@@ -102,17 +102,6 @@ export default function ImageUpload({
         <div className="mt-3 text-sm text-gray-600">
           アップロード中...
         </div>
-      )}
-      {enableOCR && preview && documentType && (
-        <DocumentRecognizer
-          imageUrl={preview}
-          documentType={documentType}
-          onRecognized={(data) => {
-            if (onRecognized) {
-              onRecognized(data);
-            }
-          }}
-        />
       )}
     </div>
   );

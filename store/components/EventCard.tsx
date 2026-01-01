@@ -1,8 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase, type Event } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
+
+interface Event {
+  id: string
+  event_name: string
+  event_start_date: string
+  event_end_date: string
+  event_display_period: string | null
+  event_time: string | null
+  venue_name: string
+  main_image_url: string | null
+  lead_text: string | null
+  event_description: string | null
+  recruitment_count: number | null
+  application_start_date: string | null
+  application_end_date: string | null
+}
 
 interface EventCardProps {
   event: Event

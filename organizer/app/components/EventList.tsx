@@ -98,21 +98,7 @@ export default function EventList({ onCreateEvent, onEditEvent }: EventListProps
   }
 
   if (selectedEvent) {
-    return (
-      <EventDetail
-        event={selectedEvent}
-        onBack={() => setSelectedEvent(null)}
-        onEdit={() => {
-          setSelectedEvent(null);
-          onEditEvent(selectedEvent.id);
-        }}
-        onDelete={() => handleDeleteEvent(selectedEvent.id)}
-        onViewApplications={(eventId) => {
-          // 申し込み管理画面への遷移は親コンポーネントで処理
-          window.location.href = `/applications?eventId=${eventId}`;
-        }}
-      />
-    );
+    return <EventDetail eventId={selectedEvent.id} />;
   }
 
   return (

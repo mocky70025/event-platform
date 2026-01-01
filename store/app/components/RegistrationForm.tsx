@@ -8,6 +8,8 @@ import { uploadImage } from '@/lib/storage';
 import ProgressBar from './ProgressBar';
 import ImageUpload from './ImageUpload';
 import LoadingSpinner from './LoadingSpinner';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface FormData {
   name: string;

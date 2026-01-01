@@ -656,8 +656,8 @@ export default function EventForm({ eventId, initialData }: EventFormProps) {
                   <label className="block mb-2 text-sm font-medium">メイン画像</label>
                   <ImageUpload
                     label="メイン画像"
-                    currentImageUrl={formData.mainImageUrl || undefined}
-                    onImageSelect={handleImageSelect}
+                    value={formData.mainImageUrl || undefined}
+                    onFileSelect={handleImageSelect}
                   />
                 </div>
 

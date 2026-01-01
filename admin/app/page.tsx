@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getCurrentUser, isAdmin, signOut } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
+import { getCurrentUser, isAdmin, signOut } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 import WelcomeScreen from './components/WelcomeScreen';
 import Dashboard from './components/Dashboard';
 import LoadingSpinner from './components/LoadingSpinner';

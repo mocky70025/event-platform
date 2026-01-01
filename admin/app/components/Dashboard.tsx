@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../lib/supabase';
 import LoadingSpinner from './LoadingSpinner';
 import OrganizerManagement from './OrganizerManagement';
 import ExhibitorManagement from './ExhibitorManagement';
 import EventManagement from './EventManagement';
 import Statistics from './Statistics';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

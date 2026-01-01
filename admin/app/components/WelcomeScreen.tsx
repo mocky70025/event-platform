@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { signInWithEmail } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { signInWithEmail } from '../../lib/auth';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
 
 export default function WelcomeScreen() {
   const [email, setEmail] = useState('');

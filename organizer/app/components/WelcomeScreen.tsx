@@ -99,7 +99,7 @@ export default function WelcomeScreen() {
           )}
 
           {/* Email Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-5 mb-4">
+          <form onSubmit={handleEmailAuth} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 メールアドレス

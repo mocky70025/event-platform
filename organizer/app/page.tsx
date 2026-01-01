@@ -10,6 +10,8 @@ import OrganizerProfile from './components/OrganizerProfile';
 import NotificationBox from './components/NotificationBox';
 import EventApplications from './components/EventApplications';
 import LoadingSpinner from './components/LoadingSpinner';
+import { Bell, Calendar, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type View = 'events' | 'profile' | 'notifications' | 'applications';
 
@@ -104,12 +106,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <LoadingSpinner />
       </div>
     );
@@ -180,96 +177,49 @@ export default function Home() {
   }, []);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
+    <div className="min-h-screen flex flex-col bg-gray-50 pb-16">
       {renderContent()}
 
-      {/* ボトムナビゲーション */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        borderTop: '1px solid #e0e0e0',
-        display: 'flex',
-        justifyContent: 'space-around',
-        padding: '8px 0',
-        zIndex: 1000,
-      }}>
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-2 z-50 shadow-sm">
+        <button
+          onClick={() => setCurrentView('events')}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center py-2 px-2 transition-colors",
+            currentView === 'events' ? 'text-orange-500' : 'text-gray-600'
+          )}
+        >
+          <Calendar className={cn("h-5 w-5 mb-1", currentView === 'events' && "text-orange-500")} />
+          <span className="text-xs font-medium">イベント</span>
+        </button>
+
         <button
           onClick={() => setCurrentView('notifications')}
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '8px',
-            border: 'none',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-            color: currentView === 'notifications' ? '#FF6B35' : '#666',
-          }}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center py-2 px-2 transition-colors relative",
+            currentView === 'notifications' ? 'text-orange-500' : 'text-gray-600'
+          )}
         >
-          <div style={{ position: 'relative' }}>
-            <span style={{ fontSize: '24px' }}>🔔</span>
+          <div className="relative">
+            <Bell className={cn("h-5 w-5 mb-1", currentView === 'notifications' && "text-orange-500")} />
             {unreadCount > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '-4px',
-                right: '-8px',
-                backgroundColor: '#e74c3c',
-                color: 'white',
-                borderRadius: '10px',
-                fontSize: '10px',
-                padding: '2px 6px',
-                minWidth: '18px',
-                textAlign: 'center',
-              }}>
+              <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-medium rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </div>
-          <span style={{ fontSize: '12px', marginTop: '4px' }}>通知</span>
-        </button>
-
-        <button
-          onClick={() => setCurrentView('events')}
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '8px',
-            border: 'none',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-            color: currentView === 'events' ? '#FF6B35' : '#666',
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>📅</span>
-          <span style={{ fontSize: '12px', marginTop: '4px' }}>作成・履歴</span>
+          <span className="text-xs font-medium">通知</span>
         </button>
 
         <button
           onClick={() => setCurrentView('profile')}
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '8px',
-            border: 'none',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-            color: currentView === 'profile' ? '#FF6B35' : '#666',
-          }}
+          className={cn(
+            "flex-1 flex flex-col items-center justify-center py-2 px-2 transition-colors",
+            currentView === 'profile' ? 'text-orange-500' : 'text-gray-600'
+          )}
         >
-          <span style={{ fontSize: '24px' }}>👤</span>
-          <span style={{ fontSize: '12px', marginTop: '4px' }}>プロフィール</span>
+          <User className={cn("h-5 w-5 mb-1", currentView === 'profile' && "text-orange-500")} />
+          <span className="text-xs font-medium">プロフィール</span>
         </button>
       </div>
     </div>

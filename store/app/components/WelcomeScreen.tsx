@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { signInWithEmail, signUpWithEmail, signInWithGoogle } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 export default function WelcomeScreen() {
+  const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,7 +23,11 @@ export default function WelcomeScreen() {
       if (isLogin) {
         await signInWithEmail(email, password);
       } else {
-        await signUpWithEmail(email, password);
+        const res = await signUpWithEmail(email, password);
+        if (res.user) {
+          router.push('/auth/verify-email');
+          return;
+        }
       }
     } catch (err: any) {
       setError(err.message || '認証に失敗しました');

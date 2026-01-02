@@ -59,6 +59,9 @@ export async function signUpWithEmail(email: string, password: string) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+      },
     });
     if (error) throw error;
     return data;
@@ -83,5 +86,4 @@ export async function signInWithGoogle() {
     throw error;
   }
 }
-
 

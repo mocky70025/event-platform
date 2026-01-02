@@ -105,7 +105,7 @@ export default function Home() {
   };
 
   // 開発モード: 認証チェックをスキップして直接ページを表示
-  const DEV_MODE = true; // 開発用フラグ
+  const DEV_MODE = process.env.NODE_ENV !== 'production';
 
   if (loading && !DEV_MODE) {
     return (
@@ -232,4 +232,3 @@ export default function Home() {
     </div>
   );
 }
-

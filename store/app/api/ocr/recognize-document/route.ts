@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const getOpenAI = () => {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error('OPENAI_API_KEY is missing');
+  return new OpenAI({ apiKey: key });
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -92,7 +93,7 @@ JSON形式で返してください。`,
 
     const prompt = prompts[documentType] || prompts.businessLicense;
 
-    // OpenAI Vision APIを使用して画像を解析
+    const openai = getOpenAI();
     const response = await openai.chat.completions.create({
       model: 'gpt-4o', // または 'gpt-4-vision-preview'
       messages: [
@@ -142,4 +143,3 @@ JSON形式で返してください。`,
     );
   }
 }
-

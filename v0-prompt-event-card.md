@@ -453,3 +453,4 @@ hover:bg-[#D1EFED] transition-colors
 
 このプロンプトで、魅力的で機能的なイベントカードを生成してください！
 
+

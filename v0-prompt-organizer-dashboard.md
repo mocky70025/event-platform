@@ -451,3 +451,4 @@ export default OrganizerDashboard
 
 このプロンプトで、主催者向けの効率的なダッシュボードを生成してください！
 
+

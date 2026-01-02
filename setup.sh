@@ -64,3 +64,4 @@ echo "   4. アプリを起動: npm run dev"
 echo ""
 echo "詳細は SETUP.md を参照してください"
 
+

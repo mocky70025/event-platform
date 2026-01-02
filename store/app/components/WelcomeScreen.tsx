@@ -47,7 +47,7 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-sky-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-sky-50 flex items-start justify-center p-6 pt-16">
       <div className="w-full max-w-md">
         {/* Logo & Title */}
         <div className="text-center mb-8">
@@ -62,7 +62,7 @@ export default function WelcomeScreen() {
         {/* Main Card */}
         <Card className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
           {/* Tabs */}
-          <div className="flex gap-4 mb-8 border-b border-gray-200">
+          <div className="flex gap-12 mb-4 border-b border-gray-200 justify-center">
             <button
               onClick={() => {
                 setIsLogin(true);
@@ -139,7 +139,7 @@ export default function WelcomeScreen() {
           </form>
 
           {/* Divider */}
-          <div className="relative my-4">
+          <div className="relative my-2">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200"></div>
             </div>

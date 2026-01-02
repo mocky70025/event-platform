@@ -6,14 +6,13 @@ import LoadingSpinner from './LoadingSpinner';
 import OrganizerManagement from './OrganizerManagement';
 import ExhibitorManagement from './ExhibitorManagement';
 import EventManagement from './EventManagement';
-import Statistics from './Statistics';
 import { Button } from './ui/button';
-import { RefreshCw, LayoutDashboard, Users, Store, Calendar } from 'lucide-react';
+import { RefreshCw, Users, Store, Calendar } from 'lucide-react';
 
-type View = 'dashboard' | 'organizers' | 'exhibitors' | 'events';
+type View = 'organizers' | 'exhibitors' | 'events';
 
 export default function Dashboard() {
-  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [currentView, setCurrentView] = useState<View>('organizers');
   const [stats, setStats] = useState({
     organizers: { total: 0, pending: 0, approved: 0 },
     exhibitors: { total: 0 },
@@ -86,8 +85,6 @@ export default function Dashboard() {
 
   const renderContent = () => {
     switch (currentView) {
-      case 'dashboard':
-        return <Statistics stats={stats} onRefresh={loadStatistics} />;
       case 'organizers':
         return <OrganizerManagement onUpdate={loadStatistics} />;
       case 'exhibitors':
@@ -95,16 +92,11 @@ export default function Dashboard() {
       case 'events':
         return <EventManagement onUpdate={loadStatistics} />;
       default:
-        return <Statistics stats={stats} onRefresh={loadStatistics} />;
+        return <OrganizerManagement onUpdate={loadStatistics} />;
     }
   };
 
-  if (loading && currentView === 'dashboard') {
-    return <LoadingSpinner />;
-  }
-
   const navItems = [
-    { id: 'dashboard' as View, label: 'ダッシュボード', icon: LayoutDashboard, count: null },
     { id: 'organizers' as View, label: '主催者管理', icon: Users, count: stats.organizers.pending },
     { id: 'exhibitors' as View, label: '出店者管理', icon: Store, count: null },
     { id: 'events' as View, label: 'イベント管理', icon: Calendar, count: stats.events.pending },

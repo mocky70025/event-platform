@@ -420,3 +420,4 @@ Next.js 14, TypeScript, Tailwind CSS, shadcn/ui
 
 準備ができたら、どの画面から始めるか教えてください！
 
+

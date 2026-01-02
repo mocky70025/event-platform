@@ -247,3 +247,4 @@ const ApplicationReviewPage = ({ eventId }) => {
 
 このプロンプトで、主催者向けのイベント管理機能を生成してください！
 
+

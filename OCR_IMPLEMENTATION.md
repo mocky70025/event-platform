@@ -196,3 +196,4 @@ onRecognized={(data) => {
 - [OpenAI Vision API ドキュメント](https://platform.openai.com/docs/guides/vision)
 - [GPT-4o モデル情報](https://platform.openai.com/docs/models/gpt-4o)
 
+

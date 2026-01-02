@@ -700,3 +700,4 @@ const StatusBadge = ({ status }: { status: 'open' | 'closing_soon' | 'closed' })
 
 または、さらに他の画面（プロフィール、申し込み管理など）も深堀りしますか？
 
+

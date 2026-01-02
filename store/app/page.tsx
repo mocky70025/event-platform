@@ -5,22 +5,21 @@ import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import WelcomeScreen from './components/WelcomeScreen';
 import RegistrationForm from './components/RegistrationForm';
-import ExhibitorHome from './components/ExhibitorHome';
 import EventList from './components/EventList';
 import ExhibitorProfile from './components/ExhibitorProfile';
 import ApplicationManagement from './components/ApplicationManagement';
 import NotificationBox from './components/NotificationBox';
 import LoadingSpinner from './components/LoadingSpinner';
-import { Bell, History, Search, User, Home as HomeIcon } from 'lucide-react';
+import { Bell, History, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type View = 'home' | 'search' | 'profile' | 'applications' | 'notifications';
+type View = 'search' | 'profile' | 'applications' | 'notifications';
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [exhibitor, setExhibitor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<View>('home');
+  const [currentView, setCurrentView] = useState<View>('search');
 
   useEffect(() => {
     checkAuth();
@@ -105,7 +104,10 @@ export default function Home() {
     }
   };
 
-  if (loading) {
+  // 開発モード: 認証チェックをスキップして直接ページを表示
+  const DEV_MODE = true; // 開発用フラグ
+
+  if (loading && !DEV_MODE) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sky-50">
         <LoadingSpinner />
@@ -113,21 +115,22 @@ export default function Home() {
     );
   }
 
-  // セッションが無効な場合、WelcomeScreenを表示
-  if (!user) {
-    return <WelcomeScreen />;
-  }
+  // 開発モードの場合は認証チェックをスキップ
+  if (!DEV_MODE) {
+    // セッションが無効な場合、WelcomeScreenを表示
+    if (!user) {
+      return <WelcomeScreen />;
+    }
 
-  // セッションが有効だが未登録の場合、RegistrationFormを表示
-  if (!exhibitor) {
-    return <RegistrationForm />;
+    // セッションが有効だが未登録の場合、RegistrationFormを表示
+    if (!exhibitor) {
+      return <RegistrationForm />;
+    }
   }
 
   // セッションが有効で登録済みの場合、メイン画面を表示
   const renderContent = () => {
     switch (currentView) {
-      case 'home':
-        return <ExhibitorHome />;
       case 'search':
         return <EventList />;
       case 'profile':
@@ -137,7 +140,7 @@ export default function Home() {
       case 'notifications':
         return <NotificationBox />;
       default:
-        return <ExhibitorHome />;
+        return <EventList />;
     }
   };
 
@@ -175,17 +178,6 @@ export default function Home() {
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center py-2 z-50 shadow-sm">
-        <button
-          onClick={() => setCurrentView('home')}
-          className={cn(
-            "flex-1 flex flex-col items-center justify-center py-2 px-2 transition-colors",
-            currentView === 'home' ? 'text-sky-500' : 'text-gray-600'
-          )}
-        >
-          <HomeIcon className={cn("h-5 w-5 mb-1", currentView === 'home' && "text-sky-500")} />
-          <span className="text-xs font-medium">ホーム</span>
-        </button>
-
         <button
           onClick={() => setCurrentView('search')}
           className={cn(

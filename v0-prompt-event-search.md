@@ -462,3 +462,4 @@ export default EventSearchPage
 
 このプロンプトで、使いやすい検索・一覧画面を生成してください！
 
+

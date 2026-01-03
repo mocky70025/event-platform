@@ -37,12 +37,17 @@ export default function VerifyEmailPage() {
         sessionStorage.setItem('user_id', session.user.id);
         sessionStorage.setItem('user_email', session.user.email || '');
         
-        // 出店者情報の確認（必要であれば）
-        await supabase
-          .from('exhibitors')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
+        try {
+          // 出店者情報の確認（必要であれば）
+          // エラーが出てもリダイレクトは阻害しないようにする
+          await supabase
+            .from('exhibitors')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+        } catch (e) {
+          console.warn('Exhibitor check failed:', e);
+        }
         
         setStatus('success');
         
@@ -233,6 +238,12 @@ export default function VerifyEmailPage() {
               <p className="text-sm text-gray-600">
                 少々お待ちください
               </p>
+              <button 
+                onClick={() => router.push('/')} 
+                className="mt-8 text-xs text-blue-500 underline hover:text-blue-700 cursor-pointer"
+              >
+                画面が切り替わらない場合はこちら（ホームへ）
+              </button>
             </>
           )}
 
@@ -249,6 +260,12 @@ export default function VerifyEmailPage() {
               <p className="text-sm text-gray-600 mb-6">
                 登録フォームにリダイレクトします...
               </p>
+              <Button
+                onClick={() => router.push('/')}
+                className="bg-sky-500 hover:bg-sky-600 text-white"
+              >
+                すぐに移動する
+              </Button>
             </>
           )}
 

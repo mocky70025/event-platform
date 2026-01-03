@@ -51,11 +51,41 @@ export default function VerifyEmailPage() {
             router.push('/');
           }, 2000);
         } else {
-          const token = searchParams.get('token');
-          const tokenHash = searchParams.get('token_hash');
-          const type = searchParams.get('type');
+          const getFromHash = (key: string) => {
+            if (typeof window === 'undefined') return null;
+            const hash = window.location.hash.replace('#', '');
+            const params = new URLSearchParams(hash);
+            return params.get(key);
+          };
+          const tokenHash = searchParams.get('token_hash') || getFromHash('token_hash');
+          const code = searchParams.get('code') || getFromHash('code');
+          const type = searchParams.get('type') || getFromHash('type');
 
-          if (tokenHash && type === 'signup') {
+          if (code) {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) {
+              console.error('Exchange code error:', error);
+              setStatus('error');
+              setErrorMessage(error.message || '確認コードの処理に失敗しました');
+              return;
+            }
+            const { data: { session: newSession } } = await supabase.auth.getSession();
+            if (newSession && newSession.user) {
+              sessionStorage.setItem('auth_type', 'email');
+              sessionStorage.setItem('user_id', newSession.user.id);
+              sessionStorage.setItem('user_email', newSession.user.email || '');
+              const { data: exhibitor } = await supabase
+                .from('exhibitors')
+                .select('id')
+                .eq('user_id', newSession.user.id)
+                .maybeSingle();
+              setStatus('success');
+              setTimeout(() => {
+                router.push('/');
+              }, 2000);
+              return;
+            }
+          } else if (tokenHash && type === 'signup') {
             const { data, error } = await supabase.auth.verifyOtp({
               token_hash: tokenHash,
               type: 'signup'

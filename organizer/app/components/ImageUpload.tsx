@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Camera } from 'lucide-react';
 
 interface ImageUploadProps {
   label: string;
@@ -81,7 +82,7 @@ export default function ImageUpload({
           </div>
         ) : (
           <label className="block cursor-pointer">
-            <div className="text-5xl text-gray-400 mb-3">📷</div>
+            <Camera className="h-12 w-12 text-gray-400 mx-auto mb-3" />
             <div className="text-sm text-gray-600 mb-3">
               画像を選択
             </div>

@@ -107,6 +107,15 @@ export default function Home() {
   // 開発モード: 認証チェックをスキップして直接ページを表示
   const DEV_MODE = process.env.NODE_ENV !== 'production';
 
+  useEffect(() => {
+    if (!DEV_MODE && loading) {
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, DEV_MODE]);
+
   if (loading && !DEV_MODE) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sky-50">

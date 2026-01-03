@@ -186,7 +186,7 @@ export default function VerifyEmailPage() {
             }
           } else {
             setStatus('error');
-            setErrorMessage('無効な確認リンクです。確認メールを再送信してください。');
+            setErrorMessage('確認リンクからアクセスしてください。確認メールを再送してください。');
           }
         }
       } catch (err: any) {

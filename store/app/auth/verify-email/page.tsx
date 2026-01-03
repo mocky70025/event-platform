@@ -94,9 +94,15 @@ export default function VerifyEmailPage() {
 
         // 3. パラメータによる手動検証
         const code = searchParams.get('code');
-        const token_hash = searchParams.get('token_hash') || hashParams.token_hash;
+        // tokenパラメータが長い文字列（ハッシュ）の場合はtoken_hashとして扱う
+        let token_hash = searchParams.get('token_hash') || hashParams.token_hash;
+        const rawToken = searchParams.get('token') || hashParams.token;
+        
+        if (!token_hash && rawToken && rawToken.length > 6) {
+          token_hash = rawToken;
+        }
+
         const type = (searchParams.get('type') || hashParams.type || 'signup') as any;
-        const token = searchParams.get('token') || hashParams.token;
         const emailParam = searchParams.get('email') || hashParams.email;
         const accessToken = hashParams.access_token;
         const refreshToken = hashParams.refresh_token;
@@ -128,11 +134,11 @@ export default function VerifyEmailPage() {
             await handleSuccess(data.session);
             return;
           }
-        } else if (token && emailParam) {
+        } else if (rawToken && emailParam) {
            // 旧形式または特殊なケース
            const { data, error } = await supabase.auth.verifyOtp({
              email: emailParam,
-             token,
+             token: rawToken,
              type: 'email',
            } as any);
            if (error) throw error;
@@ -151,7 +157,7 @@ export default function VerifyEmailPage() {
         });
 
         // パラメータもなく、セッションもない場合
-        if (!code && !token_hash && !token && !session && !accessToken) {
+        if (!code && !token_hash && !rawToken && !session && !accessToken) {
              // URLに何も情報がない場合、単にページを開いただけの可能性がある
              // 3秒待って何もなければエラー表示
              setTimeout(() => {

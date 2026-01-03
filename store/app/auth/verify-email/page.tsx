@@ -20,11 +20,48 @@ export default function VerifyEmailPage() {
     processedRef.current = true;
 
     const verifyEmail = async () => {
-      // タイムアウト設定（15秒）
-      const timeoutId = setTimeout(() => {
-        if (status === 'verifying') {
+      let timeoutId: NodeJS.Timeout;
+
+      // 成功時の処理関数
+      const handleSuccess = async (session: any) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        if (!session?.user) {
           setStatus('error');
-          setErrorMessage('処理がタイムアウトしました。もう一度お試しください。');
+          setErrorMessage('ユーザー情報の取得に失敗しました');
+          return;
+        }
+
+        // メール確認状態のチェック
+        sessionStorage.setItem('auth_type', 'email');
+        sessionStorage.setItem('user_id', session.user.id);
+        sessionStorage.setItem('user_email', session.user.email || '');
+        
+        // 出店者情報の確認（必要であれば）
+        await supabase
+          .from('exhibitors')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        setStatus('success');
+        
+        setTimeout(() => {
+          router.push('/');
+        }, 2000);
+      };
+
+      // タイムアウト設定（15秒）
+      timeoutId = setTimeout(async () => {
+        if (status === 'verifying') {
+          // タイムアウト時も念のためセッション確認
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await handleSuccess(session);
+            return;
+          }
+          setStatus('error');
+          setErrorMessage('処理がタイムアウトしました。確認は完了している可能性があります。');
         }
       }, 15000);
 
@@ -40,48 +77,30 @@ export default function VerifyEmailPage() {
         };
         const hashParams = getHashParams();
         
+        // デバッグ用：パラメータ取得状況をコンソールに出力
+        console.log('Verify Email Params:', { 
+          search: Object.fromEntries(searchParams.entries()), 
+          hash: hashParams 
+        });
+
         // エラーチェック（URLパラメータまたはハッシュパラメータ）
         const error = searchParams.get('error') || hashParams.error;
         const errorDesc = searchParams.get('error_description') || hashParams.error_description || searchParams.get('error_message') || hashParams.error_message;
 
         if (error) {
-          clearTimeout(timeoutId);
+          if (timeoutId) clearTimeout(timeoutId);
           console.error('Supabase auth error:', error, errorDesc);
           setStatus('error');
           setErrorMessage(decodeURIComponent(errorDesc || '認証エラーが発生しました'));
           return;
         }
 
-        // 成功時の処理関数
-        const handleSuccess = async (session: any) => {
-          clearTimeout(timeoutId);
-          
-          if (!session?.user) {
-            setStatus('error');
-            setErrorMessage('ユーザー情報の取得に失敗しました');
-            return;
-          }
-
-          // メール確認状態のチェック
-          // 注意: 登録直後はメタデータの更新が遅れる場合があるため、セッションがあれば一旦成功とみなすことも検討
-          // ここでは厳密にチェックするが、sessionがある時点で基本的にはOK
-          
-          sessionStorage.setItem('auth_type', 'email');
-          sessionStorage.setItem('user_id', session.user.id);
-          sessionStorage.setItem('user_email', session.user.email || '');
-          
-          // 出店者情報の確認（必要であれば）
-          await supabase
-            .from('exhibitors')
-            .select('id')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-          
-          setStatus('success');
-          
-          setTimeout(() => {
-            router.push('/');
-          }, 2000);
+        // API呼び出しのタイムアウト制御用ラッパー
+        const withTimeout = async <T,>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
+          const timeout = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('API request timeout')), ms)
+          );
+          return Promise.race([promise, timeout]);
         };
 
         // 2. 既存セッションのチェック
@@ -93,6 +112,7 @@ export default function VerifyEmailPage() {
         }
 
         // 3. パラメータによる手動検証
+
         const code = searchParams.get('code');
         // tokenパラメータが長い文字列（ハッシュ）の場合はtoken_hashとして扱う
         let token_hash = searchParams.get('token_hash') || hashParams.token_hash;
@@ -108,27 +128,27 @@ export default function VerifyEmailPage() {
         const refreshToken = hashParams.refresh_token;
 
         if (accessToken && refreshToken) {
-          const { data, error } = await supabase.auth.setSession({
+          const { data, error } = await withTimeout(supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
-          });
+          }));
           if (error) throw error;
           if (data.session) {
             await handleSuccess(data.session);
             return;
           }
         } else if (code) {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          const { data, error } = await withTimeout(supabase.auth.exchangeCodeForSession(code));
           if (error) throw error;
           if (data.session) {
             await handleSuccess(data.session);
             return;
           }
         } else if (token_hash) {
-          const { data, error } = await supabase.auth.verifyOtp({
+          const { data, error } = await withTimeout(supabase.auth.verifyOtp({
             token_hash,
             type,
-          });
+          }));
           if (error) throw error;
           if (data.session) {
             await handleSuccess(data.session);
@@ -136,11 +156,11 @@ export default function VerifyEmailPage() {
           }
         } else if (rawToken && emailParam) {
            // 旧形式または特殊なケース
-           const { data, error } = await supabase.auth.verifyOtp({
+           const { data, error } = await withTimeout(supabase.auth.verifyOtp({
              email: emailParam,
              token: rawToken,
              type: 'email',
-           } as any);
+           } as any));
            if (error) throw error;
            if (data.session) {
              await handleSuccess(data.session);
@@ -160,10 +180,15 @@ export default function VerifyEmailPage() {
         if (!code && !token_hash && !rawToken && !session && !accessToken) {
              // URLに何も情報がない場合、単にページを開いただけの可能性がある
              // 3秒待って何もなければエラー表示
-             setTimeout(() => {
+             setTimeout(async () => {
                  if (status === 'verifying') {
-                     // まだ検証中のままならエラーにする
-                     // processedRef.current = true; // ここで止めてもいいが、非同期処理が走っている可能性もあるのでフラグ管理は慎重に
+                     // 念のためもう一度セッション確認
+                     const { data: { session: lateSession } } = await supabase.auth.getSession();
+                     if (lateSession) {
+                       await handleSuccess(lateSession);
+                       return;
+                     }
+
                      setStatus('error');
                      setErrorMessage('検証用トークンが見つかりません。URLが正しいか確認してください。');
                  }
@@ -171,10 +196,24 @@ export default function VerifyEmailPage() {
         }
 
       } catch (err: any) {
+        // エラー発生時も、念のためセッションがあるか確認する
+        // (APIがエラーを返しても、実は認証できているケースへの保険)
+        const { data: { session: fallbackSession } } = await supabase.auth.getSession();
+        if (fallbackSession) {
+          await handleSuccess(fallbackSession);
+          return;
+        }
+
         clearTimeout(timeoutId);
         console.error('Verification error:', err);
         setStatus('error');
-        setErrorMessage(err.message || 'メールアドレスの確認中にエラーが発生しました');
+        // エラーメッセージを少し親切に
+        const msg = err.message || 'メールアドレスの確認中にエラーが発生しました';
+        if (msg.includes('Timeout') || msg.includes('timeout')) {
+          setErrorMessage('サーバーからの応答がありませんでした。再読み込みするか、ログインをお試しください。');
+        } else {
+          setErrorMessage(msg);
+        }
       }
     };
 

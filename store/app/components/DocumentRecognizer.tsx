@@ -48,8 +48,25 @@ export default function DocumentRecognizer({
         throw new Error(result.error || '認識に失敗しました');
       }
 
-      setRecognizedData(result.data);
-      onRecognized(result.data);
+      // JSON文字列のクリーニングとパース
+      let parsedData = result.data;
+      if (result.data && typeof result.data.text === 'string') {
+        try {
+          // Markdownコードブロックの除去
+          const jsonString = result.data.text
+            .replace(/^```json\s*/, '')
+            .replace(/^```\s*/, '')
+            .replace(/\s*```$/, '');
+          
+          parsedData = JSON.parse(jsonString);
+        } catch (e) {
+          console.error('JSON parse error:', e);
+          // パース失敗時はそのまま渡す
+        }
+      }
+
+      setRecognizedData(parsedData);
+      onRecognized(parsedData);
     } catch (err: any) {
       setError(err.message || '画像認識に失敗しました');
     } finally {
@@ -91,19 +108,6 @@ export default function DocumentRecognizer({
         <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
           {error}
         </div>
-      )}
-
-      {recognizedData && (
-        <Card className="mt-3 bg-sky-50 border border-sky-200">
-          <CardContent className="p-3">
-            <div className="font-semibold text-sm text-gray-900 mb-2">
-              認識結果:
-            </div>
-            <pre className="whitespace-pre-wrap break-words text-xs text-gray-700 m-0">
-              {JSON.stringify(recognizedData, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
       )}
     </div>
   );

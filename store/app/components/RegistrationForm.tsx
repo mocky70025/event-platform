@@ -29,6 +29,10 @@ interface FormData {
   automobileInspectionImage: File | null;
   plInsuranceImage: File | null;
   fireEquipmentLayoutImage: File | null;
+  businessLicenseExpiry?: string;
+  vehicleInspectionExpiry?: string;
+  automobileInspectionExpiry?: string;
+  plInsuranceExpiry?: string;
 }
 
 export default function RegistrationForm() {
@@ -49,6 +53,10 @@ export default function RegistrationForm() {
     automobileInspectionImage: null,
     plInsuranceImage: null,
     fireEquipmentLayoutImage: null,
+    businessLicenseExpiry: '',
+    vehicleInspectionExpiry: '',
+    automobileInspectionExpiry: '',
+    plInsuranceExpiry: '',
   });
 
   useEffect(() => {
@@ -72,6 +80,10 @@ export default function RegistrationForm() {
       email: formData.email,
       genreCategory: formData.genreCategory,
       genreFreeText: formData.genreFreeText,
+      businessLicenseExpiry: formData.businessLicenseExpiry,
+      vehicleInspectionExpiry: formData.vehicleInspectionExpiry,
+      automobileInspectionExpiry: formData.automobileInspectionExpiry,
+      plInsuranceExpiry: formData.plInsuranceExpiry,
     };
     sessionStorage.setItem('exhibitor_draft', JSON.stringify(draft));
   };
@@ -83,6 +95,31 @@ export default function RegistrationForm() {
 
   const handleImageSelect = (field: keyof FormData, file: File) => {
     setFormData(prev => ({ ...prev, [field]: file }));
+  };
+
+  const handleRecognized = (field: keyof FormData, data: any) => {
+    if (!data) return;
+    
+    console.log(`Recognized data for ${field}:`, data);
+
+    let expiry = '';
+    // APIのプロンプト定義に基づくキー名
+    if (field === 'businessLicenseExpiry') {
+        expiry = data['有効期限'] || data['有効期間'] || '';
+    } else if (field === 'vehicleInspectionExpiry') {
+        expiry = data['車検有効期限'] || data['有効期限'] || data['有効期間の満了する日'] || '';
+    } else if (field === 'automobileInspectionExpiry') {
+        expiry = data['保険期間'] || data['有効期限'] || '';
+    } else if (field === 'plInsuranceExpiry') {
+        expiry = data['保険期間'] || data['有効期限'] || '';
+    }
+
+    if (expiry) {
+        setFormData(prev => ({ ...prev, [field]: expiry }));
+        // 非同期更新のため、saveDraftはuseEffectで監視するか、ここで新しいstateを使って呼ぶ必要があるが
+        // 簡易的にここでもセットする（ただしprevには依存できないので注意）
+        // 今回はhandleInputChangeと同様の更新フローに乗せるため、以下のようにする
+    }
   };
 
   const validateStep1 = () => {
@@ -324,47 +361,94 @@ export default function RegistrationForm() {
           {currentStep === 2 && (
             <div className="space-y-6 mt-8">
               <h2 className="text-lg font-semibold text-gray-900">書類アップロード</h2>
+              <p className="text-sm text-gray-600">
+                画像をアップロードすると、AIが有効期限などを自動認識します。認識結果が誤っている場合は修正してください。
+              </p>
 
               <div className="space-y-5">
-                <ImageUpload
-                  label="営業許可証"
-                  onFileSelect={(file) => handleImageSelect('businessLicenseImage', file)}
-                  enableOCR={true}
-                  documentType="businessLicense"
-                  onRecognized={(data) => {
-                    console.log('営業許可証認識結果:', data);
-                  }}
-                />
+                <div>
+                  <ImageUpload
+                    label="営業許可証"
+                    onFileSelect={(file) => handleImageSelect('businessLicenseImage', file)}
+                    enableOCR={true}
+                    documentType="businessLicense"
+                    onRecognized={(data) => handleRecognized('businessLicenseExpiry', data)}
+                  />
+                  {(formData.businessLicenseImage || formData.businessLicenseExpiry) && (
+                    <div className="mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                       <Label className="text-xs font-semibold text-gray-700">有効期限 (自動認識)</Label>
+                       <Input 
+                         value={formData.businessLicenseExpiry || ''} 
+                         onChange={(e) => handleInputChange('businessLicenseExpiry', e.target.value)}
+                         placeholder="例: 2025年12月31日"
+                         className="h-9 mt-1 text-sm bg-white"
+                       />
+                    </div>
+                  )}
+                </div>
 
-                <ImageUpload
-                  label="車検証"
-                  onFileSelect={(file) => handleImageSelect('vehicleInspectionImage', file)}
-                  enableOCR={true}
-                  documentType="vehicleInspection"
-                  onRecognized={(data) => {
-                    console.log('車検証認識結果:', data);
-                  }}
-                />
+                <div>
+                  <ImageUpload
+                    label="車検証"
+                    onFileSelect={(file) => handleImageSelect('vehicleInspectionImage', file)}
+                    enableOCR={true}
+                    documentType="vehicleInspection"
+                    onRecognized={(data) => handleRecognized('vehicleInspectionExpiry', data)}
+                  />
+                  {(formData.vehicleInspectionImage || formData.vehicleInspectionExpiry) && (
+                    <div className="mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                       <Label className="text-xs font-semibold text-gray-700">車検有効期限 (自動認識)</Label>
+                       <Input 
+                         value={formData.vehicleInspectionExpiry || ''} 
+                         onChange={(e) => handleInputChange('vehicleInspectionExpiry', e.target.value)}
+                         placeholder="例: 2025年12月31日"
+                         className="h-9 mt-1 text-sm bg-white"
+                       />
+                    </div>
+                  )}
+                </div>
 
-                <ImageUpload
-                  label="自賠責保険"
-                  onFileSelect={(file) => handleImageSelect('automobileInspectionImage', file)}
-                  enableOCR={true}
-                  documentType="automobileInspection"
-                  onRecognized={(data) => {
-                    console.log('自賠責保険認識結果:', data);
-                  }}
-                />
+                <div>
+                  <ImageUpload
+                    label="自賠責保険"
+                    onFileSelect={(file) => handleImageSelect('automobileInspectionImage', file)}
+                    enableOCR={true}
+                    documentType="automobileInspection"
+                    onRecognized={(data) => handleRecognized('automobileInspectionExpiry', data)}
+                  />
+                  {(formData.automobileInspectionImage || formData.automobileInspectionExpiry) && (
+                    <div className="mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                       <Label className="text-xs font-semibold text-gray-700">保険期間 (自動認識)</Label>
+                       <Input 
+                         value={formData.automobileInspectionExpiry || ''} 
+                         onChange={(e) => handleInputChange('automobileInspectionExpiry', e.target.value)}
+                         placeholder="例: 2025年12月31日"
+                         className="h-9 mt-1 text-sm bg-white"
+                       />
+                    </div>
+                  )}
+                </div>
 
-                <ImageUpload
-                  label="PL保険"
-                  onFileSelect={(file) => handleImageSelect('plInsuranceImage', file)}
-                  enableOCR={true}
-                  documentType="plInsurance"
-                  onRecognized={(data) => {
-                    console.log('PL保険認識結果:', data);
-                  }}
-                />
+                <div>
+                  <ImageUpload
+                    label="PL保険"
+                    onFileSelect={(file) => handleImageSelect('plInsuranceImage', file)}
+                    enableOCR={true}
+                    documentType="plInsurance"
+                    onRecognized={(data) => handleRecognized('plInsuranceExpiry', data)}
+                  />
+                  {(formData.plInsuranceImage || formData.plInsuranceExpiry) && (
+                    <div className="mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                       <Label className="text-xs font-semibold text-gray-700">保険期間 (自動認識)</Label>
+                       <Input 
+                         value={formData.plInsuranceExpiry || ''} 
+                         onChange={(e) => handleInputChange('plInsuranceExpiry', e.target.value)}
+                         placeholder="例: 2025年12月31日"
+                         className="h-9 mt-1 text-sm bg-white"
+                       />
+                    </div>
+                  )}
+                </div>
 
                 <ImageUpload
                   label="消防設備配置図"

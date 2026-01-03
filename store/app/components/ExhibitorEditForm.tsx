@@ -141,7 +141,7 @@ export default function ExhibitorEditForm() {
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   required
-                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 />
               </div>
 
@@ -153,7 +153,7 @@ export default function ExhibitorEditForm() {
                   value={formData.gender}
                   onChange={(e) => handleInputChange('gender', e.target.value)}
                   required
-                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 >
                   <option value="">選択してください</option>
                   <option value="男">男</option>
@@ -171,7 +171,7 @@ export default function ExhibitorEditForm() {
                   value={formData.age}
                   onChange={(e) => handleInputChange('age', parseInt(e.target.value))}
                   required
-                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 />
               </div>
 
@@ -184,7 +184,7 @@ export default function ExhibitorEditForm() {
                   value={formData.phone_number}
                   onChange={(e) => handleInputChange('phone_number', e.target.value)}
                   required
-                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 />
               </div>
 
@@ -197,7 +197,7 @@ export default function ExhibitorEditForm() {
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   required
-                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 />
               </div>
 
@@ -209,7 +209,7 @@ export default function ExhibitorEditForm() {
                   type="text"
                   value={formData.genre_category || ''}
                   onChange={(e) => handleInputChange('genre_category', e.target.value || null)}
-                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 />
               </div>
 
@@ -221,14 +221,14 @@ export default function ExhibitorEditForm() {
                   value={formData.genre_free_text || ''}
                   onChange={(e) => handleInputChange('genre_free_text', e.target.value || null)}
                   rows={3}
-                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-store focus:border-transparent"
+                  className="w-full px-3 py-3 border border-gray-300 rounded text-base focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-store hover:bg-store-dark"
+                className="w-full bg-sky-500 hover:bg-sky-600"
               >
                 {saving ? '保存中...' : '保存する'}
               </Button>

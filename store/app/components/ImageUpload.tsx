@@ -61,7 +61,7 @@ export default function ImageUpload({
               <label className="inline-block">
                 <Button
                   type="button"
-                  className="bg-store hover:bg-store-dark"
+                  className="bg-sky-500 hover:bg-sky-600"
                   disabled={uploading}
                   onClick={(e) => {
                     e.preventDefault();

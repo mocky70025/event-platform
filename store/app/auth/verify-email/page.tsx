@@ -58,8 +58,10 @@ export default function VerifyEmailPage() {
             return params.get(key);
           };
           const tokenHash = searchParams.get('token_hash') || getFromHash('token_hash');
+          const token = searchParams.get('token') || getFromHash('token');
           const code = searchParams.get('code') || getFromHash('code');
           const type = searchParams.get('type') || getFromHash('type');
+          const emailParam = searchParams.get('email') || getFromHash('email');
 
           if (code) {
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -85,39 +87,102 @@ export default function VerifyEmailPage() {
               }, 2000);
               return;
             }
-          } else if (tokenHash && type === 'signup') {
-            const { data, error } = await supabase.auth.verifyOtp({
+          } else if (tokenHash) {
+            const primaryType = type || 'signup';
+            let { data, error } = await supabase.auth.verifyOtp({
               token_hash: tokenHash,
-              type: 'signup'
+              type: primaryType as any,
             });
-
             if (error) {
-              console.error('Email verification error:', error);
-              setStatus('error');
-              setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
-              return;
+              const fallbackType = primaryType === 'signup' ? 'email' : 'signup';
+              ({ data, error } = await supabase.auth.verifyOtp({
+                token_hash: tokenHash,
+                type: fallbackType as any,
+              }));
+              if (error) {
+                console.error('Email verification error:', error);
+                setStatus('error');
+                setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
+                return;
+              }
             }
 
             const { data: { session: newSession } } = await supabase.auth.getSession();
-            
             if (newSession && newSession.user) {
               sessionStorage.setItem('auth_type', 'email');
               sessionStorage.setItem('user_id', newSession.user.id);
               sessionStorage.setItem('user_email', newSession.user.email || '');
-              
               const { data: exhibitor } = await supabase
                 .from('exhibitors')
                 .select('id')
                 .eq('user_id', newSession.user.id)
                 .maybeSingle();
-              
               setStatus('success');
               setTimeout(() => {
                 router.push('/');
               }, 2000);
+              return;
             } else {
               setStatus('error');
               setErrorMessage('セッションの取得に失敗しました');
+              return;
+            }
+
+          } else if (token) {
+            const primaryType = type || 'email';
+            let data, error;
+            if (primaryType === 'email' && emailParam) {
+              ({ data, error } = await supabase.auth.verifyOtp({
+                email: emailParam,
+                token,
+                type: 'email',
+              } as any));
+            } else {
+              ({ data, error } = await (supabase.auth.verifyOtp as any)({
+                token,
+                type: primaryType as any,
+              }));
+            }
+            if (error) {
+              const fallbackType = primaryType === 'email' ? 'signup' : 'email';
+              if (fallbackType === 'email' && emailParam) {
+                ({ data, error } = await supabase.auth.verifyOtp({
+                  email: emailParam,
+                  token,
+                  type: 'email',
+                } as any));
+              } else {
+                ({ data, error } = await (supabase.auth.verifyOtp as any)({
+                  token,
+                  type: fallbackType as any,
+                }));
+              }
+              if (error) {
+                console.error('Email verification error:', error);
+                setStatus('error');
+                setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
+                return;
+              }
+            }
+            const { data: { session: newSession } } = await supabase.auth.getSession();
+            if (newSession && newSession.user) {
+              sessionStorage.setItem('auth_type', 'email');
+              sessionStorage.setItem('user_id', newSession.user.id);
+              sessionStorage.setItem('user_email', newSession.user.email || '');
+              const { data: exhibitor } = await supabase
+                .from('exhibitors')
+                .select('id')
+                .eq('user_id', newSession.user.id)
+                .maybeSingle();
+              setStatus('success');
+              setTimeout(() => {
+                router.push('/');
+              }, 2000);
+              return;
+            } else {
+              setStatus('error');
+              setErrorMessage('セッションの取得に失敗しました');
+              return;
             }
           } else {
             setStatus('error');

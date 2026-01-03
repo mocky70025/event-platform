@@ -98,8 +98,20 @@ export default function VerifyEmailPage() {
         const type = (searchParams.get('type') || hashParams.type || 'signup') as any;
         const token = searchParams.get('token') || hashParams.token;
         const emailParam = searchParams.get('email') || hashParams.email;
+        const accessToken = hashParams.access_token;
+        const refreshToken = hashParams.refresh_token;
 
-        if (code) {
+        if (accessToken && refreshToken) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+          if (data.session) {
+            await handleSuccess(data.session);
+            return;
+          }
+        } else if (code) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
           if (data.session) {
@@ -138,17 +150,18 @@ export default function VerifyEmailPage() {
           }
         });
 
-        // パラメータもなく、セッションもない場合、少し待ってからエラーにする（onAuthStateChangeが拾うかもしれないので即時エラーにはしないが、タイムアウトで処理）
-        if (!code && !token_hash && !token && !session) {
-            // URLに何も情報がない場合、単にページを開いただけの可能性がある
-            // 3秒待って何もなければエラー表示
-            setTimeout(() => {
-                if (status === 'verifying') {
-                     // まだ検証中のままならエラーにする（ただしonAuthStateChangeが動いていればそちら優先）
-                     // ここはメインのタイムアウトに任せるか、早めにフィードバックするか
-                     // ユーザー体験的には早めが良いが、競合を避けるためメインタイムアウトに任せる
-                }
-            }, 3000);
+        // パラメータもなく、セッションもない場合
+        if (!code && !token_hash && !token && !session && !accessToken) {
+             // URLに何も情報がない場合、単にページを開いただけの可能性がある
+             // 3秒待って何もなければエラー表示
+             setTimeout(() => {
+                 if (status === 'verifying') {
+                     // まだ検証中のままならエラーにする
+                     // processedRef.current = true; // ここで止めてもいいが、非同期処理が走っている可能性もあるのでフラグ管理は慎重に
+                     setStatus('error');
+                     setErrorMessage('検証用トークンが見つかりません。URLが正しいか確認してください。');
+                 }
+             }, 3000);
         }
 
       } catch (err: any) {

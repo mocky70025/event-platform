@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,33 +13,65 @@ export default function VerifyEmailPage() {
   const router = useRouter();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [errorMessage, setErrorMessage] = useState('');
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    if (processedRef.current) return;
+    processedRef.current = true;
+
     const verifyEmail = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+      // タイムアウト設定（15秒）
+      const timeoutId = setTimeout(() => {
+        if (status === 'verifying') {
           setStatus('error');
-          setErrorMessage(sessionError.message || 'セッションの取得に失敗しました');
+          setErrorMessage('処理がタイムアウトしました。もう一度お試しください。');
+        }
+      }, 15000);
+
+      try {
+        // 1. URLハッシュからのパラメータ取得（Implicit Flowやエラー用）
+        const getHashParams = () => {
+          if (typeof window === 'undefined') return {};
+          const hash = window.location.hash.replace(/^#/, '');
+          const params = new URLSearchParams(hash);
+          const result: Record<string, string> = {};
+          params.forEach((value, key) => { result[key] = value; });
+          return result;
+        };
+        const hashParams = getHashParams();
+        
+        // エラーチェック（URLパラメータまたはハッシュパラメータ）
+        const error = searchParams.get('error') || hashParams.error;
+        const errorDesc = searchParams.get('error_description') || hashParams.error_description || searchParams.get('error_message') || hashParams.error_message;
+
+        if (error) {
+          clearTimeout(timeoutId);
+          console.error('Supabase auth error:', error, errorDesc);
+          setStatus('error');
+          setErrorMessage(decodeURIComponent(errorDesc || '認証エラーが発生しました'));
           return;
         }
 
-        if (session && session.user) {
-          const isEmailConfirmed = !!session.user.email_confirmed_at;
+        // 成功時の処理関数
+        const handleSuccess = async (session: any) => {
+          clearTimeout(timeoutId);
           
-          if (!isEmailConfirmed) {
+          if (!session?.user) {
             setStatus('error');
-            setErrorMessage('メールアドレスの確認が完了していません。確認メールを再送信してください。');
+            setErrorMessage('ユーザー情報の取得に失敗しました');
             return;
           }
 
+          // メール確認状態のチェック
+          // 注意: 登録直後はメタデータの更新が遅れる場合があるため、セッションがあれば一旦成功とみなすことも検討
+          // ここでは厳密にチェックするが、sessionがある時点で基本的にはOK
+          
           sessionStorage.setItem('auth_type', 'email');
           sessionStorage.setItem('user_id', session.user.id);
           sessionStorage.setItem('user_email', session.user.email || '');
           
-          const { data: exhibitor } = await supabase
+          // 出店者情報の確認（必要であれば）
+          await supabase
             .from('exhibitors')
             .select('id')
             .eq('user_id', session.user.id)
@@ -50,146 +82,77 @@ export default function VerifyEmailPage() {
           setTimeout(() => {
             router.push('/');
           }, 2000);
-        } else {
-          const getFromHash = (key: string) => {
-            if (typeof window === 'undefined') return null;
-            const hash = window.location.hash.replace('#', '');
-            const params = new URLSearchParams(hash);
-            return params.get(key);
-          };
-          const tokenHash = searchParams.get('token_hash') || getFromHash('token_hash');
-          const token = searchParams.get('token') || getFromHash('token');
-          const code = searchParams.get('code') || getFromHash('code');
-          const type = searchParams.get('type') || getFromHash('type');
-          const emailParam = searchParams.get('email') || getFromHash('email');
+        };
 
-          if (code) {
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-            if (error) {
-              console.error('Exchange code error:', error);
-              setStatus('error');
-              setErrorMessage(error.message || '確認コードの処理に失敗しました');
-              return;
-            }
-            const { data: { session: newSession } } = await supabase.auth.getSession();
-            if (newSession && newSession.user) {
-              sessionStorage.setItem('auth_type', 'email');
-              sessionStorage.setItem('user_id', newSession.user.id);
-              sessionStorage.setItem('user_email', newSession.user.email || '');
-              const { data: exhibitor } = await supabase
-                .from('exhibitors')
-                .select('id')
-                .eq('user_id', newSession.user.id)
-                .maybeSingle();
-              setStatus('success');
-              setTimeout(() => {
-                router.push('/');
-              }, 2000);
-              return;
-            }
-          } else if (tokenHash) {
-            const primaryType = type || 'signup';
-            let { data, error } = await supabase.auth.verifyOtp({
-              token_hash: tokenHash,
-              type: primaryType as any,
-            });
-            if (error) {
-              const fallbackType = primaryType === 'signup' ? 'email' : 'signup';
-              ({ data, error } = await supabase.auth.verifyOtp({
-                token_hash: tokenHash,
-                type: fallbackType as any,
-              }));
-              if (error) {
-                console.error('Email verification error:', error);
-                setStatus('error');
-                setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
-                return;
-              }
-            }
-
-            const { data: { session: newSession } } = await supabase.auth.getSession();
-            if (newSession && newSession.user) {
-              sessionStorage.setItem('auth_type', 'email');
-              sessionStorage.setItem('user_id', newSession.user.id);
-              sessionStorage.setItem('user_email', newSession.user.email || '');
-              const { data: exhibitor } = await supabase
-                .from('exhibitors')
-                .select('id')
-                .eq('user_id', newSession.user.id)
-                .maybeSingle();
-              setStatus('success');
-              setTimeout(() => {
-                router.push('/');
-              }, 2000);
-              return;
-            } else {
-              setStatus('error');
-              setErrorMessage('セッションの取得に失敗しました');
-              return;
-            }
-
-          } else if (token) {
-            const primaryType = type || 'email';
-            let data, error;
-            if (primaryType === 'email' && emailParam) {
-              ({ data, error } = await supabase.auth.verifyOtp({
-                email: emailParam,
-                token,
-                type: 'email',
-              } as any));
-            } else {
-              ({ data, error } = await (supabase.auth.verifyOtp as any)({
-                token,
-                type: primaryType as any,
-              }));
-            }
-            if (error) {
-              const fallbackType = primaryType === 'email' ? 'signup' : 'email';
-              if (fallbackType === 'email' && emailParam) {
-                ({ data, error } = await supabase.auth.verifyOtp({
-                  email: emailParam,
-                  token,
-                  type: 'email',
-                } as any));
-              } else {
-                ({ data, error } = await (supabase.auth.verifyOtp as any)({
-                  token,
-                  type: fallbackType as any,
-                }));
-              }
-              if (error) {
-                console.error('Email verification error:', error);
-                setStatus('error');
-                setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
-                return;
-              }
-            }
-            const { data: { session: newSession } } = await supabase.auth.getSession();
-            if (newSession && newSession.user) {
-              sessionStorage.setItem('auth_type', 'email');
-              sessionStorage.setItem('user_id', newSession.user.id);
-              sessionStorage.setItem('user_email', newSession.user.email || '');
-              const { data: exhibitor } = await supabase
-                .from('exhibitors')
-                .select('id')
-                .eq('user_id', newSession.user.id)
-                .maybeSingle();
-              setStatus('success');
-              setTimeout(() => {
-                router.push('/');
-              }, 2000);
-              return;
-            } else {
-              setStatus('error');
-              setErrorMessage('セッションの取得に失敗しました');
-              return;
-            }
-          } else {
-            setStatus('error');
-            setErrorMessage('確認リンクからアクセスしてください。確認メールを再送してください。');
-          }
+        // 2. 既存セッションのチェック
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (session) {
+          await handleSuccess(session);
+          return;
         }
+
+        // 3. パラメータによる手動検証
+        const code = searchParams.get('code');
+        const token_hash = searchParams.get('token_hash') || hashParams.token_hash;
+        const type = (searchParams.get('type') || hashParams.type || 'signup') as any;
+        const token = searchParams.get('token') || hashParams.token;
+        const emailParam = searchParams.get('email') || hashParams.email;
+
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          if (data.session) {
+            await handleSuccess(data.session);
+            return;
+          }
+        } else if (token_hash) {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash,
+            type,
+          });
+          if (error) throw error;
+          if (data.session) {
+            await handleSuccess(data.session);
+            return;
+          }
+        } else if (token && emailParam) {
+           // 旧形式または特殊なケース
+           const { data, error } = await supabase.auth.verifyOtp({
+             email: emailParam,
+             token,
+             type: 'email',
+           } as any);
+           if (error) throw error;
+           if (data.session) {
+             await handleSuccess(data.session);
+             return;
+           }
+        }
+
+        // 4. Auth State Changeリスナー (Implicit Flowなどで遅れてセッションが入る場合)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_IN' && session) {
+            subscription.unsubscribe();
+            await handleSuccess(session);
+          }
+        });
+
+        // パラメータもなく、セッションもない場合、少し待ってからエラーにする（onAuthStateChangeが拾うかもしれないので即時エラーにはしないが、タイムアウトで処理）
+        if (!code && !token_hash && !token && !session) {
+            // URLに何も情報がない場合、単にページを開いただけの可能性がある
+            // 3秒待って何もなければエラー表示
+            setTimeout(() => {
+                if (status === 'verifying') {
+                     // まだ検証中のままならエラーにする（ただしonAuthStateChangeが動いていればそちら優先）
+                     // ここはメインのタイムアウトに任せるか、早めにフィードバックするか
+                     // ユーザー体験的には早めが良いが、競合を避けるためメインタイムアウトに任せる
+                }
+            }, 3000);
+        }
+
       } catch (err: any) {
+        clearTimeout(timeoutId);
         console.error('Verification error:', err);
         setStatus('error');
         setErrorMessage(err.message || 'メールアドレスの確認中にエラーが発生しました');

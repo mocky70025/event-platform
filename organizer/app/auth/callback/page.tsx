@@ -28,6 +28,19 @@ export default function AuthCallback() {
 
       if (code) {
         try {
+          // codeを処理してセッションを確立
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (exchangeError) {
+            setError('認証処理に失敗しました');
+            setTimeout(() => {
+              router.push('/');
+            }, 2000);
+            return;
+          }
+          
+          // 認証成功後、codeパラメータなしでトップページにリダイレクト
+          // メインページのonAuthStateChangeでauthCompletedフラグが設定される
           router.push('/');
         } catch (err) {
           setError('認証処理に失敗しました');
@@ -36,8 +49,10 @@ export default function AuthCallback() {
           }, 2000);
         }
       } else {
+        // セッションが既に確立されている場合
         supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_IN' && session) {
+            // 認証完了後、codeパラメータなしでトップページにリダイレクト
             router.push('/');
           } else if (event === 'SIGNED_OUT') {
             router.push('/');

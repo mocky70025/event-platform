@@ -111,8 +111,28 @@ export default function Home() {
       }
     };
 
+    // まずprocessHashTokenを実行（URLパラメータの処理）
     processHashToken();
-    checkAuth();
+    
+    // 初期認証チェック（URLパラメータがない場合）
+    // processHashTokenでcodeが処理されない場合のみ実行
+    const checkInitialAuth = async () => {
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hasCode = searchParams.get('code') || hashParams.get('access_token') || hashParams.get('token_hash');
+        
+        // URLパラメータがない場合のみ初期認証チェックを実行
+        if (!hasCode) {
+          await checkAuth();
+        }
+      }
+    };
+    
+    // 少し待ってから初期認証チェックを実行（processHashTokenの完了を待つ）
+    setTimeout(() => {
+      checkInitialAuth();
+    }, 500);
     
     // 認証状態の変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -215,17 +235,23 @@ export default function Home() {
     return <WelcomeScreen />;
   }
 
-  // セッションが有効だが未登録の場合、RegistrationFormを表示
-  // メール認証完了後は登録フォームを表示し、フォーム完了後にメインUIに遷移
+  // セッションが有効だが未登録の場合
+  // 認証完了直後（メール/Google/LINE）で主催者情報がない場合は登録フォームを表示
+  // それ以外（既存ユーザーがログインした場合）はメインUIを表示
   if (!organizer) {
-    return (
-      <RegistrationForm 
-        onRegistrationComplete={() => {
-          setAuthCompleted(true);
-          checkAuth();
-        }}
-      />
-    );
+    // 認証完了直後は登録フォームを表示
+    if (authCompleted) {
+      return (
+        <RegistrationForm 
+          onRegistrationComplete={() => {
+            setAuthCompleted(true);
+            checkAuth();
+          }}
+        />
+      );
+    }
+    // 既存ユーザーがログインした場合（authCompletedがfalseのまま）はメインUIを表示
+    // ただし、これは通常発生しない（既存ユーザーはorganizerが存在するはず）
   }
 
   // セッションが有効で登録済みの場合、メイン画面を表示

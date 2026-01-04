@@ -49,7 +49,8 @@ export default function WelcomeScreen() {
         type: 'signup',
         email: targetEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+          // メールリンクから直接メインUIに戻し、ホームの処理でセッションを張る
+          emailRedirectTo: `${window.location.origin}/`,
         },
       } as any);
       setEmailSent(true);

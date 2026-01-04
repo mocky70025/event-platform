@@ -65,7 +65,8 @@ export async function signUpWithEmail(email: string, password: string) {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+        // 直接メインUIに戻して、ホーム側のトークン処理でセッションを確立する
+        emailRedirectTo: `${window.location.origin}/`,
       },
     });
     if (error) throw error;

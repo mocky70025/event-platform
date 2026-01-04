@@ -260,18 +260,21 @@ export default function Home() {
     );
   }
 
+  // ハッシュトークンがある場合は処理中とみなしてローディングを表示
+  if (typeof window !== 'undefined' && window.location.hash.includes('token_hash')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-sky-50">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   // 開発モードの場合は認証チェックをスキップ
   if (!DEV_MODE) {
     // セッションが無効な場合、WelcomeScreenを表示
     if (!user) {
       return <WelcomeScreen />;
     }
-    
-    // 以前はここでRegistrationFormを強制表示していたが、
-    // 未登録ユーザーでもメイン画面（EventList等）にはアクセスできるように変更
-    // if (!exhibitor) {
-    //   return <RegistrationForm onRegistrationComplete={() => checkAuth()} />;
-    // }
   }
 
   // セッションが有効で登録済みの場合、メイン画面を表示

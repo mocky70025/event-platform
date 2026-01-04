@@ -14,6 +14,8 @@ function AuthCallbackContent() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
     const handleCallback = async () => {
       const code = searchParams.get('code');
       const errorParam = searchParams.get('error');
@@ -26,27 +28,75 @@ function AuthCallbackContent() {
         return;
       }
 
-      if (code) {
-        try {
-          router.push('/');
-        } catch (err) {
-          setError('認証処理に失敗しました');
-          setTimeout(() => {
-            router.push('/');
-          }, 2000);
-        }
-      } else {
-        supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' && session) {
-            router.push('/');
-          } else if (event === 'SIGNED_OUT') {
-            router.push('/');
+      const finalizeSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          sessionStorage.setItem('auth_type', 'oauth');
+          sessionStorage.setItem('user_id', session.user.id);
+          sessionStorage.setItem('user_email', session.user.email || '');
+
+          const { data: existing } = await supabase
+            .from('exhibitors')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase
+              .from('exhibitors')
+              .upsert({
+                user_id: session.user.id,
+                email: session.user.email,
+                name: null,
+                gender: null,
+                age: null,
+                phone_number: null,
+                genre_category: null,
+                genre_free_text: null,
+                business_license_image_url: null,
+                vehicle_inspection_image_url: null,
+                automobile_inspection_image_url: null,
+                pl_insurance_image_url: null,
+                fire_equipment_layout_image_url: null,
+              }, { onConflict: 'user_id' });
           }
-        });
+
+          router.replace('/');
+          return true;
+        }
+
+        return false;
+      };
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (exchangeError) {
+          setError(exchangeError.message || '認証処理に失敗しました');
+          setTimeout(() => router.push('/'), 2000);
+          return;
+        }
+
+        await finalizeSession();
+        return;
       }
+
+      const ensured = await finalizeSession();
+      if (ensured) return;
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          await finalizeSession();
+        }
+      });
+
+      cleanup = () => subscription.unsubscribe();
     };
 
     handleCallback();
+
+    return () => cleanup?.();
   }, [searchParams, router]);
 
   if (error) {

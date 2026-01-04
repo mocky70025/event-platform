@@ -19,15 +19,83 @@ export default function VerifyEmailPage() {
     const channel = typeof window !== 'undefined' ? new BroadcastChannel('auth-flow') : null;
     channel?.postMessage({ type: 'verify-begin' });
 
-    const verifyEmail = async () => {
-      let hashTokenHash: string | null = null;
-      if (typeof window !== 'undefined') {
-        const hp = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-        hashTokenHash = hp.get('token_hash');
+    const handleSessionSuccess = async (session: any) => {
+      if (!mounted) return;
+
+      sessionStorage.setItem('auth_type', 'email');
+      sessionStorage.setItem('user_id', session.user.id);
+      sessionStorage.setItem('user_email', session.user.email || '');
+      sessionStorage.removeItem('pending_email');
+
+      const { data: existingExhibitor } = await supabase
+        .from('exhibitors')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (!existingExhibitor) {
+        const { error: insertError } = await supabase
+          .from('exhibitors')
+          .insert({
+            user_id: session.user.id,
+            email: session.user.email,
+            name: null,
+            gender: null,
+            age: null,
+            phone_number: null,
+            genre_category: null,
+            genre_free_text: null,
+            business_license_image_url: null,
+            vehicle_inspection_image_url: null,
+            automobile_inspection_image_url: null,
+            pl_insurance_image_url: null,
+            fire_equipment_layout_image_url: null,
+          });
+
+        if (insertError) {
+          console.error('Exhibitor insert error:', insertError);
+        }
       }
+
+      setStatus('success');
+
+      // フォーム画面に留まらないよう、確立済みセッションを保持したまま
+      // メインUIへ即座に遷移する
+      if (typeof window !== 'undefined') {
+        window.location.replace('/');
+      } else {
+        router.replace('/');
+      }
+    };
+
+    const ensureSessionAndRedirect = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+      if (currentSession) {
+        await handleSessionSuccess(currentSession);
+        return true;
+      }
+
+      return false;
+    };
+
+    const subscription = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      if (event === 'SIGNED_IN' && session) {
+        await handleSessionSuccess(session);
+      }
+    }).data.subscription;
+
+    const verifyEmail = async () => {
+      let hashParams: URLSearchParams | null = null;
+      if (typeof window !== 'undefined') {
+        hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      }
+
       const error = searchParams.get('error');
       const errorDescription = searchParams.get('error_description');
-      
+
       if (error) {
         if (mounted) {
           setStatus('error');
@@ -35,14 +103,6 @@ export default function VerifyEmailPage() {
         }
         return;
       }
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (!mounted) return;
-
-        if (event === 'SIGNED_IN' && session) {
-          await handleSessionSuccess(session);
-        }
-      });
 
       try {
         const waitForSession = async (timeoutMs: number) => {
@@ -55,64 +115,118 @@ export default function VerifyEmailPage() {
           return null;
         };
 
+        const hashAccessToken = hashParams?.get('access_token');
+        const hashRefreshToken = hashParams?.get('refresh_token');
+
+        if (hashAccessToken && hashRefreshToken) {
+          const { data: setData, error: sessionError } = await supabase.auth.setSession({
+            access_token: hashAccessToken,
+            refresh_token: hashRefreshToken,
+          });
+
+          if (sessionError) {
+            console.error('Session set error:', sessionError);
+            if (mounted) {
+              setStatus('error');
+              setErrorMessage(sessionError.message || 'セッションの確立に失敗しました');
+            }
+            return;
+          }
+
+          if (setData.session) {
+            await handleSessionSuccess(setData.session);
+            return;
+          }
+
+          const ensured = await ensureSessionAndRedirect();
+          if (ensured) return;
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (session) {
           await handleSessionSuccess(session);
-        } else {
-          const tokenHash = searchParams.get('token_hash');
-          const type = searchParams.get('type') as any;
-          const token = searchParams.get('token');
-          const emailParam = searchParams.get('email');
-          const email = emailParam || (typeof window !== 'undefined' ? sessionStorage.getItem('pending_email') : null);
-          const code = searchParams.get('code');
+          return;
+        }
 
-          const effectiveTokenHash = tokenHash || hashTokenHash;
+        const tokenHash = searchParams.get('token_hash');
+        const type = searchParams.get('type') as any;
+        const token = searchParams.get('token');
+        const emailParam = searchParams.get('email');
+        const email = emailParam || (typeof window !== 'undefined' ? sessionStorage.getItem('pending_email') : null);
+        const code = searchParams.get('code');
+        const hashTokenHash = hashParams?.get('token_hash');
 
-          if (effectiveTokenHash && type === 'signup') {
-            const { error } = await supabase.auth.verifyOtp({
-              token_hash: effectiveTokenHash,
-              type: 'signup'
-            });
+        const effectiveTokenHash = tokenHash || hashTokenHash;
 
-            if (error) {
-              console.error('Email verification error:', error);
-              if (mounted) {
-                setStatus('error');
-                setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
-              }
-            }
-          } else if (token && type === 'signup' && email) {
-            const { error } = await supabase.auth.verifyOtp({
-              token,
-              type: 'signup',
-              email: email as string
-            });
-            if (error) {
-              console.error('Email verification error:', error);
-              if (mounted) {
-                setStatus('error');
-                setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
-              }
-            }
-          } else if (code) {
-            const { error } = await supabase.auth.exchangeCodeForSession(code);
-             if (error) {
-              console.error('Code exchange error:', error);
-              if (mounted) {
-                setStatus('error');
-                setErrorMessage(error.message || '認証コードの交換に失敗しました');
-              }
+        if (effectiveTokenHash && type === 'signup') {
+          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: effectiveTokenHash,
+            type: 'signup',
+            email: email || undefined,
+          });
+
+          if (verifyError) {
+            console.error('Email verification error:', verifyError);
+            if (mounted) {
+              setStatus('error');
+              setErrorMessage(verifyError.message || 'メールアドレスの確認に失敗しました');
             }
           } else {
-            const s = await waitForSession(10000);
-            if (s) {
-              await handleSessionSuccess(s);
-            } else if (mounted && status === 'verifying') {
-              setStatus('error');
-              setErrorMessage('他のタブで処理中の可能性があります。全てのタブを閉じて再試行してください。');
+            if (verifyData.session) {
+              await handleSessionSuccess(verifyData.session);
+              return;
             }
+            const ensured = await ensureSessionAndRedirect();
+            if (ensured) return;
           }
+          return;
+        }
+
+        if (token && type === 'signup' && email) {
+          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+            token,
+            type: 'signup',
+            email: email as string,
+          });
+          if (verifyError) {
+            console.error('Email verification error:', verifyError);
+            if (mounted) {
+              setStatus('error');
+              setErrorMessage(verifyError.message || 'メールアドレスの確認に失敗しました');
+            }
+          } else {
+            if (verifyData.session) {
+              await handleSessionSuccess(verifyData.session);
+              return;
+            }
+            const ensured = await ensureSessionAndRedirect();
+            if (ensured) return;
+          }
+          return;
+        }
+
+        if (code) {
+          const { data: codeData, error: codeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (codeError) {
+            console.error('Code exchange error:', codeError);
+            if (mounted) {
+              setStatus('error');
+              setErrorMessage(codeError.message || '認証コードの交換に失敗しました');
+            }
+          } else if (codeData.session) {
+            await handleSessionSuccess(codeData.session);
+            return;
+          }
+          return;
+        }
+
+        const s = await waitForSession(10000);
+        if (s) {
+          await handleSessionSuccess(s);
+        } else if (mounted && status === 'verifying') {
+          setStatus('error');
+          setErrorMessage('他のタブで処理中の可能性があります。全てのタブを閉じて再試行してください。');
         }
       } catch (err: any) {
         console.error('Verification init error:', err);
@@ -121,38 +235,13 @@ export default function VerifyEmailPage() {
           setErrorMessage(err.message || 'エラーが発生しました');
         }
       }
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    };
-
-    const handleSessionSuccess = async (session: any) => {
-      if (!mounted) return;
-      
-      sessionStorage.setItem('auth_type', 'email');
-      sessionStorage.setItem('user_id', session.user.id);
-      sessionStorage.setItem('user_email', session.user.email || '');
-      sessionStorage.removeItem('pending_email');
-
-      const { data } = await supabase
-        .from('exhibitors')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
-      if (mounted) {
-        setStatus('success');
-        setTimeout(() => {
-          if (mounted) router.push('/');
-        }, 2000);
-      }
     };
 
     verifyEmail();
 
     return () => {
       mounted = false;
+      subscription.unsubscribe();
       channel?.postMessage({ type: 'verify-end' });
       channel?.close();
     };

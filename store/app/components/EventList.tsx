@@ -84,6 +84,44 @@ export default function EventList({ exhibitor, onNavigateToProfile }: EventListP
     }
   };
 
+  const isExhibitorComplete = (ex: any) => {
+    if (!ex) return false;
+
+    const requiredFields = [
+      'name',
+      'gender',
+      'age',
+      'phone_number',
+      'email',
+    ];
+
+    return requiredFields.every((field) => {
+      const value = ex[field];
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string') return value.trim().length > 0;
+      return true;
+    });
+  };
+
+  const getMissingFieldLabels = (ex: any) => {
+    const labels: Record<string, string> = {
+      name: '氏名',
+      gender: '性別',
+      age: '年齢',
+      phone_number: '電話番号',
+      email: 'メールアドレス',
+    };
+
+    return Object.entries(labels)
+      .filter(([field]) => {
+        const value = ex?.[field];
+        if (value === null || value === undefined) return true;
+        if (typeof value === 'string') return value.trim().length === 0;
+        return false;
+      })
+      .map(([, label]) => label);
+  };
+
   const filterEvents = () => {
     let filtered = [...events];
 
@@ -417,12 +455,19 @@ export default function EventList({ exhibitor, onNavigateToProfile }: EventListP
                 status={event.approval_status as any}
                 accent="store"
                 onClick={() => {
-                  if (!exhibitor) {
-                    if (confirm('イベントへの申し込みには出店者情報の登録が必要です。\n登録画面へ移動しますか？')) {
+                  const missing = getMissingFieldLabels(exhibitor);
+
+                  if (!isExhibitorComplete(exhibitor)) {
+                    const message = missing.length
+                      ? `イベントへの申し込みにはプロフィールの入力が必要です。\n不足項目: ${missing.join('、')}\nプロフィール画面に移動しますか？`
+                      : 'イベントへの申し込みには出店者情報の登録が必要です。\nプロフィール画面に移動しますか？';
+
+                    if (confirm(message)) {
                       onNavigateToProfile?.();
                     }
                     return;
                   }
+
                   router.push(`/events/${event.id}`);
                 }}
               />

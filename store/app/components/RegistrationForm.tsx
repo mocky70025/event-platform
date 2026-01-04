@@ -76,6 +76,38 @@ export default function RegistrationForm({ onRegistrationComplete }: Registratio
   }, []);
 
   useEffect(() => {
+    const fetchExistingExhibitor = async () => {
+      if (!userProfile) return;
+
+      const { data } = await supabase
+        .from('exhibitors')
+        .select('*')
+        .eq('user_id', userProfile.userId)
+        .maybeSingle();
+
+      if (data) {
+        setFormData((prev) => ({
+          ...prev,
+          name: data.name || '',
+          gender: data.gender || '',
+          age: data.age ? String(data.age) : '',
+          phoneNumber: data.phone_number || '',
+          email: data.email || '',
+          genreCategory: data.genre_category || '',
+          genreFreeText: data.genre_free_text || '',
+          businessLicenseImageUrl: data.business_license_image_url || null,
+          vehicleInspectionImageUrl: data.vehicle_inspection_image_url || null,
+          automobileInspectionImageUrl: data.automobile_inspection_image_url || null,
+          plInsuranceImageUrl: data.pl_insurance_image_url || null,
+          fireEquipmentLayoutImageUrl: data.fire_equipment_layout_image_url || null,
+        }));
+      }
+    };
+
+    fetchExistingExhibitor();
+  }, [userProfile]);
+
+  useEffect(() => {
     const saved = sessionStorage.getItem('exhibitor_draft');
     if (saved) {
       try {
@@ -242,7 +274,7 @@ export default function RegistrationForm({ onRegistrationComplete }: Registratio
           .from('exhibitors')
           .select('id')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
         existingUser = data;
       } else {
         // LINE認証の場合、user_metadataにline_user_idが含まれているか、
@@ -257,12 +289,6 @@ export default function RegistrationForm({ onRegistrationComplete }: Registratio
           .eq('line_user_id', userId)
           .single();
         existingUser = data;
-      }
-
-      if (existingUser) {
-        alert('既に登録済みです。');
-        setLoading(false);
-        return;
       }
 
       // 出店者データの保存
@@ -294,7 +320,7 @@ export default function RegistrationForm({ onRegistrationComplete }: Registratio
 
       const { error: insertError } = await supabase
         .from('exhibitors')
-        .insert(insertPayload);
+        .upsert(insertPayload, { onConflict: 'user_id' });
 
       if (insertError) throw insertError;
 

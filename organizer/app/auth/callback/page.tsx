@@ -14,6 +14,8 @@ export default function AuthCallback() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
     const handleCallback = async () => {
       const code = searchParams.get('code');
       const errorParam = searchParams.get('error');
@@ -26,27 +28,68 @@ export default function AuthCallback() {
         return;
       }
 
-      if (code) {
-        try {
-          router.push('/');
-        } catch (err) {
-          setError('認証処理に失敗しました');
-          setTimeout(() => {
-            router.push('/');
-          }, 2000);
-        }
-      } else {
-        supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' && session) {
-            router.push('/');
-          } else if (event === 'SIGNED_OUT') {
-            router.push('/');
+      const finalizeSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          sessionStorage.setItem('auth_type', 'oauth');
+          sessionStorage.setItem('user_id', session.user.id);
+          sessionStorage.setItem('user_email', session.user.email || '');
+
+          const { data: existing } = await supabase
+            .from('organizers')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase
+              .from('organizers')
+              .upsert({
+                user_id: session.user.id,
+                name: null,
+                organization_name: null,
+                phone_number: null,
+                email: session.user.email,
+                is_approved: false,
+              }, { onConflict: 'user_id' });
           }
-        });
+
+          router.replace('/');
+          return true;
+        }
+
+        return false;
+      };
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (exchangeError) {
+          setError(exchangeError.message || '認証処理に失敗しました');
+          setTimeout(() => router.push('/'), 2000);
+          return;
+        }
+
+        await finalizeSession();
+        return;
       }
+
+      const ensured = await finalizeSession();
+      if (ensured) return;
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          await finalizeSession();
+        }
+      });
+
+      cleanup = () => subscription.unsubscribe();
     };
 
     handleCallback();
+
+    return () => cleanup?.();
   }, [searchParams, router]);
 
   if (error) {

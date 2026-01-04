@@ -83,14 +83,37 @@ export default function Home() {
         .from('organizers')
         .select('*')
         .eq('user_id', currentUser.id)
-        .single();
+        .maybeSingle();
 
       if (organizerError && organizerError.code !== 'PGRST116') {
         // PGRST116は「行が見つからない」エラーなので、未登録を意味する
         console.error('Error checking organizer:', organizerError);
       }
 
-      setOrganizer(organizerData || null);
+      let effectiveOrganizer = organizerData;
+
+      if (!effectiveOrganizer) {
+        const { data: created, error: createError } = await supabase
+          .from('organizers')
+          .upsert({
+            user_id: currentUser.id,
+            name: null,
+            organization_name: null,
+            phone_number: null,
+            email: currentUser.email,
+            is_approved: false,
+          }, { onConflict: 'user_id' })
+          .select()
+          .maybeSingle();
+
+        if (createError) {
+          console.error('Error creating organizer placeholder:', createError);
+        } else {
+          effectiveOrganizer = created;
+        }
+      }
+
+      setOrganizer(effectiveOrganizer || null);
     } catch (error) {
       console.error('Error checking auth:', error);
       // エラーが発生した場合も、sessionStorageを完全にクリア

@@ -237,21 +237,21 @@ export default function Home() {
 
   // セッションが有効だが未登録の場合
   // 認証完了直後（メール/Google/LINE）で主催者情報がない場合は登録フォームを表示
-  // それ以外（既存ユーザーがログインした場合）はメインUIを表示
   if (!organizer) {
     // 認証完了直後は登録フォームを表示
     if (authCompleted) {
       return (
         <RegistrationForm 
-          onRegistrationComplete={() => {
-            setAuthCompleted(true);
-            checkAuth();
+          onRegistrationComplete={async () => {
+            // 登録完了後、主催者情報を取得してからメインUIを表示
+            await checkAuth();
+            // checkAuth完了後、organizerが取得されているはずなので、メインUIが表示される
           }}
         />
       );
     }
-    // 既存ユーザーがログインした場合（authCompletedがfalseのまま）はメインUIを表示
-    // ただし、これは通常発生しない（既存ユーザーはorganizerが存在するはず）
+    // ローディング中または認証完了前は登録フォームを表示しない
+    // （既存ユーザーがログインした場合、organizerが存在するのでこの条件には到達しない）
   }
 
   // セッションが有効で登録済みの場合、メイン画面を表示

@@ -56,9 +56,15 @@ export async function signInWithEmail(email: string, password: string) {
 
 export async function signUpWithEmail(email: string, password: string) {
   try {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('pending_email', email);
+    }
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
     });
     if (error) throw error;
     return data;

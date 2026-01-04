@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { signInWithEmail, signUpWithEmail, signInWithGoogle } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -11,6 +12,7 @@ export default function WelcomeScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,12 +23,33 @@ export default function WelcomeScreen() {
       if (isLogin) {
         await signInWithEmail(email, password);
       } else {
-        await signUpWithEmail(email, password);
+        const res = await signUpWithEmail(email, password);
+        if (res.user) {
+          setEmailSent(true);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('user_email', email);
+          }
+          return;
+        }
       }
     } catch (err: any) {
       setError(err.message || '認証に失敗しました');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    try {
+      const targetEmail = email || (typeof window !== 'undefined' ? sessionStorage.getItem('user_email') || '' : '');
+      if (!targetEmail) return;
+      await supabase.auth.resend({
+        type: 'signup',
+        email: targetEmail,
+      } as any);
+      setEmailSent(true);
+    } catch (err: any) {
+      setError(err.message || '確認メールの再送に失敗しました');
     }
   };
 
@@ -95,6 +118,22 @@ export default function WelcomeScreen() {
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+          {emailSent && (
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <p className="text-sm text-gray-700">
+                確認メールを送信しました。メール内のリンクを開いてください。
+              </p>
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  onClick={handleResendEmail}
+                  className="h-9 bg-white border border-gray-300 hover:bg-orange-50 text-gray-700 text-sm font-medium rounded-lg"
+                >
+                  確認メールを再送
+                </Button>
+              </div>
             </div>
           )}
 

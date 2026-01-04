@@ -260,13 +260,17 @@ export default function Home() {
     );
   }
 
-  // ハッシュトークンがある場合は処理中とみなしてローディングを表示
-  if (typeof window !== 'undefined' && window.location.hash.includes('token_hash')) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-sky-50">
-        <LoadingSpinner />
-      </div>
-    );
+  // ハッシュトークンまたは認証コードがある場合は処理中とみなしてローディングを表示
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash;
+    const search = window.location.search;
+    if (hash.includes('token_hash') || search.includes('code=')) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-sky-50">
+          <LoadingSpinner />
+        </div>
+      );
+    }
   }
 
   // 開発モードの場合は認証チェックをスキップ

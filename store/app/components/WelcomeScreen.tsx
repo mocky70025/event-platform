@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signInWithEmail, signUpWithEmail, signInWithGoogle } from '@/lib/auth';
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithLine } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -66,9 +66,15 @@ export default function WelcomeScreen() {
     }
   };
 
-  const handleLineAuth = () => {
+  const handleLineAuth = async () => {
     setError('');
-    window.location.href = '/api/auth/line-login';
+    setLoading(true);
+    try {
+      await signInWithLine();
+    } catch (err: any) {
+      setError(err.message || 'LINE認証に失敗しました');
+      setLoading(false);
+    }
   };
 
   return (

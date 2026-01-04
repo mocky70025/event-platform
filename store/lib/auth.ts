@@ -91,3 +91,20 @@ export async function signInWithGoogle() {
     throw error;
   }
 }
+
+export async function signInWithLine() {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'line' as any,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: 'profile openid email',
+      },
+    });
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error signing in with LINE:', error);
+    throw error;
+  }
+}

@@ -40,8 +40,27 @@ export default function Home() {
         }
       };
     }
+    // メールリンクの #token_hash を直接処理してセッション確立
+    const processHashToken = async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const hp = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+          const th = hp.get('token_hash');
+          const type = hp.get('type');
+          if (th && (type === 'signup' || !type)) {
+            await supabase.auth.verifyOtp({ token_hash: th, type: 'signup' as any });
+            // ハッシュをクリア
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        }
+      } catch (err) {
+        console.error('Error processing hash token:', err);
+      }
+    };
 
-    checkAuth();
+    processHashToken().finally(() => {
+      checkAuth();
+    });
     
     // 認証状態の変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

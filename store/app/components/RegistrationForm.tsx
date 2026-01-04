@@ -122,15 +122,45 @@ export default function RegistrationForm() {
     }
   };
 
+  const convertToHalfWidth = (str: string): string => {
+    return str.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+  };
+
+  const validatePhoneNumber = (phone: string): boolean => {
+    const halfWidth = convertToHalfWidth(phone.replace(/-/g, ''));
+    return /^\d+$/.test(halfWidth) && halfWidth.length >= 10 && halfWidth.length <= 15;
+  };
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const validateStep1 = () => {
     if (!formData.name || !formData.gender || !formData.age || !formData.phoneNumber || !formData.email) {
       setError('すべての必須項目を入力してください');
       return false;
     }
-    if (isNaN(Number(formData.age)) || Number(formData.age) < 0) {
-      setError('年齢は正の数で入力してください');
+    
+    // 年齢の正規化チェック
+    const normalizedAge = convertToHalfWidth(formData.age);
+    if (isNaN(Number(normalizedAge)) || Number(normalizedAge) < 0 || Number(normalizedAge) > 100) {
+      setError('年齢は正の数で正しく入力してください（0-100歳）');
       return false;
     }
+
+    // 電話番号バリデーション
+    if (!validatePhoneNumber(formData.phoneNumber)) {
+      setError('電話番号の形式が正しくありません（半角数字、ハイフンなしで10-15桁）');
+      return false;
+    }
+
+    // メールアドレスバリデーション
+    if (!validateEmail(formData.email)) {
+      setError('メールアドレスの形式が正しくありません');
+      return false;
+    }
+
     return true;
   };
 
@@ -154,6 +184,26 @@ export default function RegistrationForm() {
 
   const handleSubmit = async () => {
     setError('');
+
+    // バリデーションチェック
+    if (!validateStep1()) {
+      return;
+    }
+
+    // 画像の必須チェック
+    const requiredImages = [
+      formData.businessLicenseImage,
+      formData.vehicleInspectionImage,
+      formData.automobileInspectionImage,
+      formData.plInsuranceImage,
+      formData.fireEquipmentLayoutImage
+    ];
+
+    if (requiredImages.some(img => !img)) {
+      setError('すべての必要書類画像をアップロードしてください');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -194,14 +244,18 @@ export default function RegistrationForm() {
 
       // 出店者データの保存
       console.log('Inserting exhibitor data for:', userId);
+      
+      const normalizedAge = parseInt(convertToHalfWidth(formData.age), 10);
+      const normalizedPhone = convertToHalfWidth(formData.phoneNumber.replace(/-/g, ''));
+
       const { error: insertError } = await supabase
         .from('exhibitors')
         .insert({
           user_id: userId,
           name: formData.name,
           gender: formData.gender,
-          age: parseInt(formData.age),
-          phone_number: formData.phoneNumber,
+          age: normalizedAge,
+          phone_number: normalizedPhone,
           email: formData.email,
           genre_category: formData.genreCategory || null,
           genre_free_text: formData.genreFreeText || null,

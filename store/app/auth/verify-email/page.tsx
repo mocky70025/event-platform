@@ -16,9 +16,10 @@ export default function VerifyEmailPage() {
 
   useEffect(() => {
     let mounted = true;
+    const channel = typeof window !== 'undefined' ? new BroadcastChannel('auth-flow') : null;
+    channel?.postMessage({ type: 'verify-begin' });
 
     const verifyEmail = async () => {
-      // 1. エラーパラメータのチェック
       const error = searchParams.get('error');
       const errorDescription = searchParams.get('error_description');
       
@@ -30,7 +31,6 @@ export default function VerifyEmailPage() {
         return;
       }
 
-      // 2. Auth状態の変更を監視
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!mounted) return;
 
@@ -39,16 +39,26 @@ export default function VerifyEmailPage() {
         }
       });
 
-      // 3. 初期セッション確認と手動検証
       try {
+        const waitForSession = async (timeoutMs: number) => {
+          const start = Date.now();
+          while (Date.now() - start < timeoutMs) {
+            const { data: { session: s } } = await supabase.auth.getSession();
+            if (s) return s;
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+          return null;
+        };
+
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
           await handleSessionSuccess(session);
         } else {
-          // セッションがない場合、URLパラメータから確認を試みる
           const tokenHash = searchParams.get('token_hash');
           const type = searchParams.get('type') as any;
+          const token = searchParams.get('token');
+          const email = searchParams.get('email');
           const code = searchParams.get('code');
 
           if (tokenHash && type === 'signup') {
@@ -64,10 +74,20 @@ export default function VerifyEmailPage() {
                 setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
               }
             }
-            // 成功した場合、onAuthStateChangeがSIGNED_INを発火するはず
+          } else if (token && type === 'signup' && email) {
+            const { error } = await supabase.auth.verifyOtp({
+              token,
+              type: 'signup',
+              email
+            });
+            if (error) {
+              console.error('Email verification error:', error);
+              if (mounted) {
+                setStatus('error');
+                setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
+              }
+            }
           } else if (code) {
-            // PKCEフロー: コードがある場合、Supabaseが自動的に交換するのを待つ
-            // または手動で交換する（通常は自動処理される）
             const { error } = await supabase.auth.exchangeCodeForSession(code);
              if (error) {
               console.error('Code exchange error:', error);
@@ -77,21 +97,13 @@ export default function VerifyEmailPage() {
               }
             }
           } else {
-            // Implicit Flow (ハッシュ) やその他のケース
-            // 少し待ってからタイムアウト判定
-            setTimeout(async () => {
-              if (!mounted || status === 'success') return;
-              
-              const { data: { session: lateSession } } = await supabase.auth.getSession();
-              if (lateSession) {
-                await handleSessionSuccess(lateSession);
-              } else {
-                if (mounted && status === 'verifying') {
-                  setStatus('error');
-                  setErrorMessage('確認リンクが無効か、期限切れです。メールを再送信してください。');
-                }
-              }
-            }, 3000); // 3秒待機
+            const s = await waitForSession(10000);
+            if (s) {
+              await handleSessionSuccess(s);
+            } else if (mounted && status === 'verifying') {
+              setStatus('error');
+              setErrorMessage('他のタブで処理中の可能性があります。全てのタブを閉じて再試行してください。');
+            }
           }
         }
       } catch (err: any) {
@@ -110,16 +122,10 @@ export default function VerifyEmailPage() {
     const handleSessionSuccess = async (session: any) => {
       if (!mounted) return;
       
-      // メール確認済みかチェック
-      // 注意: 新規登録直後は email_confirmed_at がまだ更新されていない場合があるため、
-      // セッションがある時点で成功とみなすか、少し待つ必要があるかもしれません。
-      // ここではセッションがあればOKとします。
-
       sessionStorage.setItem('auth_type', 'email');
       sessionStorage.setItem('user_id', session.user.id);
       sessionStorage.setItem('user_email', session.user.email || '');
 
-      // 登録済みかチェック
       const { data } = await supabase
         .from('exhibitors')
         .select('id')
@@ -138,6 +144,8 @@ export default function VerifyEmailPage() {
 
     return () => {
       mounted = false;
+      channel?.postMessage({ type: 'verify-end' });
+      channel?.close();
     };
   }, [searchParams, router]);
 

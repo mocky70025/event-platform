@@ -20,13 +20,23 @@ export default function Home() {
   const [exhibitor, setExhibitor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('search');
+  const [pauseAuth, setPauseAuth] = useState(false);
 
   useEffect(() => {
+    const channel = typeof window !== 'undefined' ? new BroadcastChannel('auth-flow') : null;
+    if (channel) {
+      channel.onmessage = (e) => {
+        if (e?.data?.type === 'verify-begin') setPauseAuth(true);
+        if (e?.data?.type === 'verify-end') setPauseAuth(false);
+      };
+    }
+
     checkAuth();
     
     // 認証状態の変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (pauseAuth) return;
         if (event === 'SIGNED_OUT' || !session) {
           // セッションが無効な場合、sessionStorageを完全にクリア
           if (typeof window !== 'undefined') {
@@ -42,11 +52,16 @@ export default function Home() {
 
     return () => {
       subscription.unsubscribe();
+      channel?.close();
     };
-  }, []);
+  }, [pauseAuth]);
 
   const checkAuth = async () => {
     try {
+      if (pauseAuth) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       
       // セッションを確認

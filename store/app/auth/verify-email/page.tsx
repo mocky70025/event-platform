@@ -112,7 +112,7 @@ export default function VerifyEmailPage() {
         const hashRefreshToken = hashParams?.get('refresh_token');
 
         if (hashAccessToken && hashRefreshToken) {
-          const { error: sessionError } = await supabase.auth.setSession({
+          const { data: setData, error: sessionError } = await supabase.auth.setSession({
             access_token: hashAccessToken,
             refresh_token: hashRefreshToken,
           });
@@ -123,6 +123,11 @@ export default function VerifyEmailPage() {
               setStatus('error');
               setErrorMessage(sessionError.message || 'セッションの確立に失敗しました');
             }
+            return;
+          }
+
+          if (setData.session) {
+            await handleSessionSuccess(setData.session);
             return;
           }
 
@@ -148,7 +153,7 @@ export default function VerifyEmailPage() {
         const effectiveTokenHash = tokenHash || hashTokenHash;
 
         if (effectiveTokenHash && type === 'signup') {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
+          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
             token_hash: effectiveTokenHash,
             type: 'signup',
             email: email || undefined,
@@ -161,6 +166,10 @@ export default function VerifyEmailPage() {
               setErrorMessage(verifyError.message || 'メールアドレスの確認に失敗しました');
             }
           } else {
+            if (verifyData.session) {
+              await handleSessionSuccess(verifyData.session);
+              return;
+            }
             const ensured = await ensureSessionAndRedirect();
             if (ensured) return;
           }
@@ -168,7 +177,7 @@ export default function VerifyEmailPage() {
         }
 
         if (token && type === 'signup' && email) {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
+          const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
             token,
             type: 'signup',
             email: email as string,
@@ -180,6 +189,10 @@ export default function VerifyEmailPage() {
               setErrorMessage(verifyError.message || 'メールアドレスの確認に失敗しました');
             }
           } else {
+            if (verifyData.session) {
+              await handleSessionSuccess(verifyData.session);
+              return;
+            }
             const ensured = await ensureSessionAndRedirect();
             if (ensured) return;
           }
@@ -187,13 +200,16 @@ export default function VerifyEmailPage() {
         }
 
         if (code) {
-          const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
+          const { data: codeData, error: codeError } = await supabase.auth.exchangeCodeForSession(code);
           if (codeError) {
             console.error('Code exchange error:', codeError);
             if (mounted) {
               setStatus('error');
               setErrorMessage(codeError.message || '認証コードの交換に失敗しました');
             }
+          } else if (codeData.session) {
+            await handleSessionSuccess(codeData.session);
+            return;
           }
           return;
         }

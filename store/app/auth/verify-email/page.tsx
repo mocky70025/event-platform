@@ -57,10 +57,19 @@ export default function VerifyEmailPage() {
         }
       }
 
-      if (mounted) {
-        setStatus('success');
-        router.replace('/');
+      setStatus('success');
+      router.replace('/');
+    };
+
+    const ensureSessionAndRedirect = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+      if (currentSession) {
+        await handleSessionSuccess(currentSession);
+        return true;
       }
+
+      return false;
     };
 
     const subscription = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -116,6 +125,9 @@ export default function VerifyEmailPage() {
             }
             return;
           }
+
+          const ensured = await ensureSessionAndRedirect();
+          if (ensured) return;
         }
 
         const { data: { session } } = await supabase.auth.getSession();
@@ -138,7 +150,8 @@ export default function VerifyEmailPage() {
         if (effectiveTokenHash && type === 'signup') {
           const { error: verifyError } = await supabase.auth.verifyOtp({
             token_hash: effectiveTokenHash,
-            type: 'signup'
+            type: 'signup',
+            email: email || undefined,
           });
 
           if (verifyError) {
@@ -147,6 +160,9 @@ export default function VerifyEmailPage() {
               setStatus('error');
               setErrorMessage(verifyError.message || 'メールアドレスの確認に失敗しました');
             }
+          } else {
+            const ensured = await ensureSessionAndRedirect();
+            if (ensured) return;
           }
           return;
         }
@@ -155,7 +171,7 @@ export default function VerifyEmailPage() {
           const { error: verifyError } = await supabase.auth.verifyOtp({
             token,
             type: 'signup',
-            email: email as string
+            email: email as string,
           });
           if (verifyError) {
             console.error('Email verification error:', verifyError);
@@ -163,6 +179,9 @@ export default function VerifyEmailPage() {
               setStatus('error');
               setErrorMessage(verifyError.message || 'メールアドレスの確認に失敗しました');
             }
+          } else {
+            const ensured = await ensureSessionAndRedirect();
+            if (ensured) return;
           }
           return;
         }

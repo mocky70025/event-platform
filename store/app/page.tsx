@@ -24,6 +24,7 @@ export default function Home() {
   const [pauseAuth, setPauseAuth] = useState(false);
   const [authError, setAuthError] = useState<{title: string, message: string} | null>(null);
   const processingRef = useRef(false);
+  const checkingAuthRef = useRef(false); // checkAuthの重複実行防止用
   const [debugInfo, setDebugInfo] = useState<string>(''); // デバッグ情報
   
   // 未読通知数を取得するフックをここに移動
@@ -54,27 +55,8 @@ export default function Home() {
     }
   }, [user]);
 
-  // タブ間同期（認証フローの一時停止制御）
-  useEffect(() => {
-    const channel = typeof window !== 'undefined' ? new BroadcastChannel('auth-flow') : null;
-    let safetyTimeout: ReturnType<typeof setTimeout>;
-    if (channel) {
-      channel.onmessage = (e) => {
-        if (e?.data?.type === 'verify-begin') {
-          setPauseAuth(true);
-          clearTimeout(safetyTimeout);
-          safetyTimeout = setTimeout(() => setPauseAuth(false), 15000);
-        } else if (e?.data?.type === 'verify-end') {
-          setPauseAuth(false);
-          clearTimeout(safetyTimeout);
-        }
-      };
-    }
-    return () => {
-      channel?.close();
-      clearTimeout(safetyTimeout);
-    };
-  }, []);
+  // タブ間同期（認証フローの一時停止制御）は削除しました
+  // 元のタブを閉じなくても動作するように変更
 
   // メールリンクのハッシュ処理と認証状態監視
   useEffect(() => {
@@ -212,12 +194,19 @@ export default function Home() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setDebugInfo(prev => prev + `\nAuth state change: ${event}`);
-        if (pauseAuth) return;
+        
+        // トークン処理中はイベントによるチェックをスキップする（競合防止）
+        if (processingRef.current) {
+          setDebugInfo(prev => prev + ' (Skipped due to processing)');
+          return;
+        }
+
         if (event === 'SIGNED_OUT' || !session) {
           setUser(null);
           setExhibitor(null);
         } else if (event === 'SIGNED_IN' && session) {
-          await checkAuth();
+          // 少し待ってからチェック（競合緩和）
+          setTimeout(() => checkAuth(), 100);
         }
       }
     );
@@ -225,11 +214,17 @@ export default function Home() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [pauseAuth]);
+  }, []); // pauseAuthへの依存を削除
 
   const checkAuth = async () => {
     try {
-      if (pauseAuth) return;
+      // 重複実行防止
+      if (checkingAuthRef.current) {
+        setDebugInfo(prev => prev + '\nCheck auth skipped (already running)');
+        return;
+      }
+      checkingAuthRef.current = true;
+      
       setLoading(true);
       
       setDebugInfo(prev => prev + '\nChecking auth...');
@@ -242,6 +237,7 @@ export default function Home() {
         setUser(null);
         setExhibitor(null);
         setLoading(false);
+        checkingAuthRef.current = false;
         return;
       }
 
@@ -254,6 +250,7 @@ export default function Home() {
         setUser(null);
         setExhibitor(null);
         setLoading(false);
+        checkingAuthRef.current = false;
         return;
       }
 
@@ -280,9 +277,8 @@ export default function Home() {
       setUser(null);
       setExhibitor(null);
     } finally {
-      if (!pauseAuth) {
-        setLoading(false);
-      }
+      setLoading(false);
+      checkingAuthRef.current = false;
     }
   };
 
@@ -299,12 +295,8 @@ export default function Home() {
   }, [loading, DEV_MODE]);
 
   if (pauseAuth) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50">
-        <LoadingSpinner />
-        <p className="mt-4 text-gray-600 font-medium">別のタブで認証を行っています...</p>
-      </div>
-    );
+    // 削除した機能の残骸も削除
+    return null;
   }
 
   // 認証エラー時の表示

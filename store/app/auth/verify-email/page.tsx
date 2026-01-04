@@ -27,17 +27,41 @@ export default function VerifyEmailPage() {
       sessionStorage.setItem('user_email', session.user.email || '');
       sessionStorage.removeItem('pending_email');
 
-      await supabase
+      const { data: existingExhibitor } = await supabase
         .from('exhibitors')
         .select('id')
         .eq('user_id', session.user.id)
         .maybeSingle();
 
+      if (!existingExhibitor) {
+        const { error: insertError } = await supabase
+          .from('exhibitors')
+          .insert({
+            user_id: session.user.id,
+            email: session.user.email,
+            name: null,
+            gender: null,
+            age: null,
+            phone_number: null,
+            genre_category: null,
+            genre_free_text: null,
+            business_license_image_url: null,
+            vehicle_inspection_image_url: null,
+            automobile_inspection_image_url: null,
+            pl_insurance_image_url: null,
+            fire_equipment_layout_image_url: null,
+          });
+
+        if (insertError) {
+          console.error('Exhibitor insert error:', insertError);
+        }
+      }
+
       if (mounted) {
         setStatus('success');
         setTimeout(() => {
           if (mounted) router.push('/');
-        }, 2000);
+        }, 800); // すぐにメインUIへ遷移
       }
     };
 

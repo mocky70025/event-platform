@@ -94,7 +94,9 @@ export default function ExhibitorProfile({ onExhibitorUpdate }: ExhibitorProfile
     );
   }
 
-  if (!exhibitor) {
+  const isIncomplete = !exhibitor?.name || !exhibitor?.gender || !exhibitor?.age || !exhibitor?.phone_number;
+
+  if (!exhibitor || isIncomplete) {
     return (
       <RegistrationForm onRegistrationComplete={handleRegistrationComplete} />
     );

@@ -26,6 +26,7 @@ export default function Home() {
   const processingRef = useRef(false);
   const checkingAuthRef = useRef(false); // checkAuthの重複実行防止用
   const [debugInfo, setDebugInfo] = useState<string>(''); // デバッグ情報
+  const [emailVerificationCompleted, setEmailVerificationCompleted] = useState(false); // メール認証完了フラグ
   
   // 未読通知数を取得するフックをここに移動
   const [unreadCount, setUnreadCount] = useState(0);
@@ -107,6 +108,7 @@ export default function Home() {
                });
             } else {
                setDebugInfo(prev => prev + '\nCode exchange successful');
+               setEmailVerificationCompleted(true); // メール認証完了をマーク
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
                await checkAuth();
@@ -139,6 +141,7 @@ export default function Home() {
                });
              } else {
                setDebugInfo(prev => prev + '\nSession set manually from hash');
+               setEmailVerificationCompleted(true); // メール認証完了をマーク
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
                await checkAuth();
@@ -171,6 +174,7 @@ export default function Home() {
               });
             } else {
               setDebugInfo(prev => prev + '\nOTP verification successful');
+              setEmailVerificationCompleted(true); // メール認証完了をマーク
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
@@ -371,8 +375,10 @@ export default function Home() {
       );
     }
 
-    // ユーザーは認証済みだが、出店者情報が未登録の場合は登録フォームを表示
-    if (user && !exhibitor) {
+    // ユーザーは認証済みだが、出店者情報が未登録の場合
+    // メール認証完了直後はイベント一覧を表示（登録はプロフィール画面から可能）
+    // それ以外の場合は登録フォームを表示
+    if (user && !exhibitor && !emailVerificationCompleted) {
       return (
         <div className="min-h-screen bg-sky-50">
           <RegistrationForm 

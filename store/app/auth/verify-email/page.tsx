@@ -59,9 +59,7 @@ export default function VerifyEmailPage() {
 
       if (mounted) {
         setStatus('success');
-        setTimeout(() => {
-          if (mounted) router.push('/');
-        }, 800); // すぐにメインUIへ遷移
+        router.replace('/');
       }
     };
 

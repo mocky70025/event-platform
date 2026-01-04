@@ -270,6 +270,7 @@ export default function Home() {
       }
 
       setExhibitor(exhibitorData || null);
+      setCurrentView('search');
       setDebugInfo(prev => prev + '\nAuth check complete. Exhibitor: ' + (exhibitorData ? 'Found' : 'Not found'));
     } catch (error: any) {
       console.error('Error checking auth:', error);

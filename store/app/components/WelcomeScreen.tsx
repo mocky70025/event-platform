@@ -48,6 +48,9 @@ export default function WelcomeScreen() {
       await supabase.auth.resend({
         type: 'signup',
         email: targetEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+        },
       } as any);
       setEmailSent(true);
     } catch (err: any) {

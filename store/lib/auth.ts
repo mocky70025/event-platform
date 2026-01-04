@@ -65,7 +65,7 @@ export async function signUpWithEmail(email: string, password: string) {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${window.location.origin}/auth/verify-email`,
       },
     });
     if (error) throw error;

@@ -133,6 +133,38 @@ export default function Home() {
             return;
           }
 
+          // Implicitフロー (access_token) の直接処理
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken) {
+             if (processingRef.current) return;
+             processingRef.current = true;
+             setLoading(true);
+             setDebugInfo(prev => prev + '\nFound access_token in hash');
+
+             const { error } = await supabase.auth.setSession({
+               access_token: accessToken,
+               refresh_token: refreshToken || '',
+             });
+
+             if (error) {
+               console.error('Set session error:', error);
+               setDebugInfo(prev => prev + '\nError setting session: ' + error.message);
+               setAuthError({
+                 title: '認証エラー',
+                 message: 'セッションの確立に失敗しました。'
+               });
+             } else {
+               setDebugInfo(prev => prev + '\nSession set manually from hash');
+               const newUrl = window.location.pathname;
+               window.history.replaceState({}, document.title, newUrl);
+               await checkAuth();
+             }
+             processingRef.current = false;
+             return;
+          }
+
           // Implicitフロー (token_hash) の処理
           const th = hashParams.get('token_hash');
           const type = hashParams.get('type');
@@ -232,6 +264,7 @@ export default function Home() {
         .from('exhibitors')
         .select('*')
         .eq('user_id', currentUser.id)
+        .limit(1)
         .maybeSingle();
 
       if (exhibitorError) {
@@ -321,7 +354,7 @@ export default function Home() {
   if (typeof window !== 'undefined') {
     const hash = window.location.hash;
     const search = window.location.search;
-    if (hash.includes('token_hash') || search.includes('code=')) {
+    if (hash.includes('token_hash') || hash.includes('access_token') || search.includes('code=')) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50">
           <LoadingSpinner />

@@ -193,7 +193,28 @@ export default function Home() {
       }
     };
 
+    // まずprocessHashTokenを実行（URLパラメータの処理）
     processHashToken();
+    
+    // 初期認証チェック（URLパラメータがない場合）
+    // processHashTokenでcodeが処理されない場合のみ実行
+    const checkInitialAuth = async () => {
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hasCode = searchParams.get('code') || hashParams.get('access_token') || hashParams.get('token_hash');
+        
+        // URLパラメータがない場合のみ初期認証チェックを実行
+        if (!hasCode) {
+          await checkAuth();
+        }
+      }
+    };
+    
+    // 少し待ってから初期認証チェックを実行（processHashTokenの完了を待つ）
+    setTimeout(() => {
+      checkInitialAuth();
+    }, 500);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {

@@ -53,8 +53,17 @@ export default function Home() {
       try {
         if (typeof window !== 'undefined') {
           // ハッシュパラメータの取得
-          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+          // URLフラグメント(#)からパラメータをパースする
+          const hashString = window.location.hash.substring(1); // #を除去
+          const hashParams = new URLSearchParams(hashString);
           const searchParams = new URLSearchParams(window.location.search);
+          
+          console.log('Processing hash/search params:', { 
+            hash: window.location.hash, 
+            search: window.location.search,
+            token_hash: hashParams.get('token_hash'),
+            code: searchParams.get('code')
+          });
           
           // エラーチェック (ハッシュまたはクエリパラメータ)
           const error = hashParams.get('error') || searchParams.get('error');
@@ -75,7 +84,9 @@ export default function Home() {
           if (code) {
             if (processingRef.current) return;
             processingRef.current = true;
+            setLoading(true); // 明示的にローディング設定
             
+            console.log('Exchanging code for session...');
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             
             if (error) {
@@ -85,7 +96,12 @@ export default function Home() {
                  message: error.message || '認証コードの交換に失敗しました。'
                });
             } else {
-               history.replaceState(null, '', window.location.pathname);
+               console.log('Code exchange successful');
+               // URLをクリーンアップ
+               const newUrl = window.location.pathname;
+               window.history.replaceState({}, document.title, newUrl);
+               // 成功したら明示的にチェック
+               await checkAuth();
             }
             processingRef.current = false;
             return;
@@ -95,11 +111,16 @@ export default function Home() {
           const th = hashParams.get('token_hash');
           const type = hashParams.get('type');
           
-          if (th && (type === 'signup' || !type)) {
+          if (th && (type === 'signup' || type === 'magiclink' || type === 'recovery' || !type)) {
             if (processingRef.current) return;
             processingRef.current = true;
+            setLoading(true); // 明示的にローディング設定
             
-            const { error } = await supabase.auth.verifyOtp({ token_hash: th, type: 'signup' as any });
+            console.log('Verifying OTP with token_hash:', type);
+            const { error } = await supabase.auth.verifyOtp({ 
+              token_hash: th, 
+              type: (type as any) || 'signup'
+            });
             
             if (error) {
               console.error('Verify OTP error:', error);
@@ -108,8 +129,11 @@ export default function Home() {
                 message: error.message || '認証に失敗しました。リンクが期限切れの可能性があります。'
               });
             } else {
+              console.log('OTP verification successful');
               // 成功時はハッシュをクリア
-              history.replaceState(null, '', window.location.pathname);
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+              await checkAuth();
             }
             processingRef.current = false;
           }
@@ -124,13 +148,8 @@ export default function Home() {
       }
     };
 
-    processHashToken().finally(() => {
-      if (!authError) {
-        checkAuth();
-      } else {
-        setLoading(false);
-      }
-    });
+    processHashToken();
+
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -273,7 +292,7 @@ export default function Home() {
     }
   }
 
-  // 開発モードの場合は認証チェックをスキップ
+    // 開発モードの場合は認証チェックをスキップ
   if (!DEV_MODE) {
     // セッションが無効な場合、WelcomeScreenを表示
     if (!user) {

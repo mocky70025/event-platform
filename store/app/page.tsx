@@ -24,6 +24,35 @@ export default function Home() {
   const [pauseAuth, setPauseAuth] = useState(false);
   const [authError, setAuthError] = useState<{title: string, message: string} | null>(null);
   const processingRef = useRef(false);
+  const [debugInfo, setDebugInfo] = useState<string>(''); // デバッグ情報
+  
+  // 未読通知数を取得するフックをここに移動
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  useEffect(() => {
+    if (user) {
+      const loadUnreadCount = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('user_type', 'exhibitor')
+            .eq('is_read', false);
+
+          if (!error && data) {
+            setUnreadCount(data.length);
+          }
+        } catch (err) {
+          console.error('Error loading unread count:', err);
+        }
+      };
+
+      loadUnreadCount();
+      const interval = setInterval(loadUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   // タブ間同期（認証フローの一時停止制御）
   useEffect(() => {
@@ -53,24 +82,22 @@ export default function Home() {
       try {
         if (typeof window !== 'undefined') {
           // ハッシュパラメータの取得
-          // URLフラグメント(#)からパラメータをパースする
-          const hashString = window.location.hash.substring(1); // #を除去
+          const hashString = window.location.hash.substring(1); 
           const hashParams = new URLSearchParams(hashString);
           const searchParams = new URLSearchParams(window.location.search);
           
-          console.log('Processing hash/search params:', { 
-            hash: window.location.hash, 
-            search: window.location.search,
-            token_hash: hashParams.get('token_hash'),
-            code: searchParams.get('code')
-          });
+          const debugMsg = `Hash: ${window.location.hash}, Search: ${window.location.search}`;
+          console.log(debugMsg);
+          setDebugInfo(prev => prev + '\n' + debugMsg);
           
-          // エラーチェック (ハッシュまたはクエリパラメータ)
+          // エラーチェック
           const error = hashParams.get('error') || searchParams.get('error');
           const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
 
           if (error) {
-            console.error('Auth error from URL:', error, errorDescription);
+            const errorMsg = `Auth error: ${error} - ${errorDescription}`;
+            console.error(errorMsg);
+            setDebugInfo(prev => prev + '\n' + errorMsg);
             setAuthError({
               title: '認証エラー',
               message: errorDescription?.replace(/\+/g, ' ') || '認証リンクが無効か期限切れです。'
@@ -84,23 +111,22 @@ export default function Home() {
           if (code) {
             if (processingRef.current) return;
             processingRef.current = true;
-            setLoading(true); // 明示的にローディング設定
+            setLoading(true);
             
-            console.log('Exchanging code for session...');
+            setDebugInfo(prev => prev + '\nExchanging code...');
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             
             if (error) {
                console.error('Exchange code error:', error);
+               setDebugInfo(prev => prev + '\nExchange code error: ' + error.message);
                setAuthError({
                  title: '認証失敗',
                  message: error.message || '認証コードの交換に失敗しました。'
                });
             } else {
-               console.log('Code exchange successful');
-               // URLをクリーンアップ
+               setDebugInfo(prev => prev + '\nCode exchange successful');
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
-               // 成功したら明示的にチェック
                await checkAuth();
             }
             processingRef.current = false;
@@ -114,9 +140,9 @@ export default function Home() {
           if (th && (type === 'signup' || type === 'magiclink' || type === 'recovery' || !type)) {
             if (processingRef.current) return;
             processingRef.current = true;
-            setLoading(true); // 明示的にローディング設定
+            setLoading(true);
             
-            console.log('Verifying OTP with token_hash:', type);
+            setDebugInfo(prev => prev + `\nVerifying OTP: ${type}`);
             const { error } = await supabase.auth.verifyOtp({ 
               token_hash: th, 
               type: (type as any) || 'signup'
@@ -124,13 +150,13 @@ export default function Home() {
             
             if (error) {
               console.error('Verify OTP error:', error);
+              setDebugInfo(prev => prev + '\nVerify OTP error: ' + error.message);
               setAuthError({
                 title: '認証失敗',
                 message: error.message || '認証に失敗しました。リンクが期限切れの可能性があります。'
               });
             } else {
-              console.log('OTP verification successful');
-              // 成功時はハッシュをクリア
+              setDebugInfo(prev => prev + '\nOTP verification successful');
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
@@ -138,8 +164,9 @@ export default function Home() {
             processingRef.current = false;
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error processing hash token:', err);
+        setDebugInfo(prev => prev + '\nSystem error: ' + err.message);
         setAuthError({
           title: 'システムエラー',
           message: '予期せぬエラーが発生しました。'
@@ -150,9 +177,9 @@ export default function Home() {
 
     processHashToken();
 
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        setDebugInfo(prev => prev + `\nAuth state change: ${event}`);
         if (pauseAuth) return;
         if (event === 'SIGNED_OUT' || !session) {
           setUser(null);
@@ -170,26 +197,28 @@ export default function Home() {
 
   const checkAuth = async () => {
     try {
-      if (pauseAuth) {
-        // 認証一時停止中はローディング状態を維持しないが、チェックもしない
-        // UI側でpauseAuthの状態をハンドリングする
-        return;
-      }
+      if (pauseAuth) return;
       setLoading(true);
+      
+      setDebugInfo(prev => prev + '\nChecking auth...');
       
       // セッションを確認
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
+        setDebugInfo(prev => prev + '\nNo session found');
         setUser(null);
         setExhibitor(null);
         setLoading(false);
         return;
       }
 
+      setDebugInfo(prev => prev + '\nSession found: ' + session.user.id);
+
       // ユーザー情報を取得
       const currentUser = await getCurrentUser();
       if (!currentUser) {
+        setDebugInfo(prev => prev + '\nUser fetch failed');
         setUser(null);
         setExhibitor(null);
         setLoading(false);
@@ -203,16 +232,18 @@ export default function Home() {
         .from('exhibitors')
         .select('*')
         .eq('user_id', currentUser.id)
-        .single();
+        .maybeSingle();
 
-      if (exhibitorError && exhibitorError.code !== 'PGRST116') {
-        // PGRST116は「行が見つからない」エラーなので、未登録を意味する
+      if (exhibitorError) {
         console.error('Error checking exhibitor:', exhibitorError);
+        setDebugInfo(prev => prev + '\nExhibitor check error: ' + exhibitorError.message);
       }
 
       setExhibitor(exhibitorData || null);
-    } catch (error) {
+      setDebugInfo(prev => prev + '\nAuth check complete. Exhibitor: ' + (exhibitorData ? 'Found' : 'Not found'));
+    } catch (error: any) {
       console.error('Error checking auth:', error);
+      setDebugInfo(prev => prev + '\nAuth check exception: ' + error.message);
       setUser(null);
       setExhibitor(null);
     } finally {
@@ -255,6 +286,9 @@ export default function Home() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">{authError.title}</h2>
           <p className="text-gray-600 mb-6">{authError.message}</p>
+          <pre className="text-xs text-left bg-gray-100 p-2 rounded mb-4 overflow-auto max-h-32">
+            {debugInfo}
+          </pre>
           <Button 
             onClick={() => {
               setAuthError(null);
@@ -273,8 +307,12 @@ export default function Home() {
 
   if (loading && !DEV_MODE) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-sky-50">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50">
         <LoadingSpinner />
+        <p className="mt-4 text-xs text-gray-400">Loading... (Debug)</p>
+        <pre className="mt-2 text-[10px] text-gray-400 max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
+            {debugInfo.split('\n').slice(-1)[0]}
+        </pre>
       </div>
     );
   }
@@ -285,8 +323,9 @@ export default function Home() {
     const search = window.location.search;
     if (hash.includes('token_hash') || search.includes('code=')) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-sky-50">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50">
           <LoadingSpinner />
+          <p className="mt-4 text-xs text-gray-400">Processing Token... (Debug)</p>
         </div>
       );
     }
@@ -296,7 +335,16 @@ export default function Home() {
   if (!DEV_MODE) {
     // セッションが無効な場合、WelcomeScreenを表示
     if (!user) {
-      return <WelcomeScreen />;
+        // ★★★ デバッグ情報をWelcomeScreenに渡すか、あるいはここで表示する ★★★
+      return (
+        <div className="relative">
+            <div className="absolute top-0 left-0 right-0 z-50 bg-black/80 text-white text-[10px] p-2 max-h-32 overflow-auto pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
+                DEBUG INFO:<br/>
+                {debugInfo.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+            </div>
+            <WelcomeScreen />
+        </div>
+      );
     }
   }
 
@@ -322,34 +370,6 @@ export default function Home() {
         return <EventList />;
     }
   };
-
-  // 未読通知数を取得
-  const [unreadCount, setUnreadCount] = useState(0);
-  
-  useEffect(() => {
-    if (user) {
-      const loadUnreadCount = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('notifications')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('user_type', 'exhibitor')
-            .eq('is_read', false);
-
-          if (!error && data) {
-            setUnreadCount(data.length);
-          }
-        } catch (err) {
-          console.error('Error loading unread count:', err);
-        }
-      };
-
-      loadUnreadCount();
-      const interval = setInterval(loadUnreadCount, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [user]);
 
   return (
     <div className="min-h-screen flex flex-col bg-sky-50 pb-16">

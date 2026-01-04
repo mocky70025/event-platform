@@ -187,7 +187,7 @@ export default function RegistrationForm() {
       for (const field of imageFields) {
         const file = (formData as any)[field.key];
         if (file) {
-          const url = await uploadImage(file, `exhibitors/${userId}/${field.name}`);
+          const url = await uploadImage('documents', `exhibitors/${userId}/${field.name}`, file);
           imageUrls[`${field.key}Url`] = url;
         }
       }

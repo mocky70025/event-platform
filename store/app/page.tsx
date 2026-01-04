@@ -264,14 +264,45 @@ export default function Home() {
         .limit(1)
         .maybeSingle();
 
-      if (exhibitorError) {
+      if (exhibitorError && exhibitorError.code !== 'PGRST116') {
         console.error('Error checking exhibitor:', exhibitorError);
         setDebugInfo(prev => prev + '\nExhibitor check error: ' + exhibitorError.message);
       }
 
-      setExhibitor(exhibitorData || null);
+      let effectiveExhibitor = exhibitorData;
+
+      if (!effectiveExhibitor) {
+        const { data: created, error: createError } = await supabase
+          .from('exhibitors')
+          .upsert({
+            user_id: currentUser.id,
+            email: currentUser.email,
+            name: null,
+            gender: null,
+            age: null,
+            phone_number: null,
+            genre_category: null,
+            genre_free_text: null,
+            business_license_image_url: null,
+            vehicle_inspection_image_url: null,
+            automobile_inspection_image_url: null,
+            pl_insurance_image_url: null,
+            fire_equipment_layout_image_url: null,
+          }, { onConflict: 'user_id' })
+          .select()
+          .maybeSingle();
+
+        if (createError) {
+          console.error('Error creating exhibitor placeholder:', createError);
+          setDebugInfo(prev => prev + '\nExhibitor create error: ' + createError.message);
+        } else {
+          effectiveExhibitor = created;
+        }
+      }
+
+      setExhibitor(effectiveExhibitor || null);
       setCurrentView('search');
-      setDebugInfo(prev => prev + '\nAuth check complete. Exhibitor: ' + (exhibitorData ? 'Found' : 'Not found'));
+      setDebugInfo(prev => prev + '\nAuth check complete. Exhibitor: ' + (effectiveExhibitor ? 'Found' : 'Not found'));
     } catch (error: any) {
       console.error('Error checking auth:', error);
       setDebugInfo(prev => prev + '\nAuth check exception: ' + error.message);

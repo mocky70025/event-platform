@@ -20,6 +20,11 @@ export default function VerifyEmailPage() {
     channel?.postMessage({ type: 'verify-begin' });
 
     const verifyEmail = async () => {
+      let hashTokenHash: string | null = null;
+      if (typeof window !== 'undefined') {
+        const hp = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        hashTokenHash = hp.get('token_hash');
+      }
       const error = searchParams.get('error');
       const errorDescription = searchParams.get('error_description');
       
@@ -58,12 +63,15 @@ export default function VerifyEmailPage() {
           const tokenHash = searchParams.get('token_hash');
           const type = searchParams.get('type') as any;
           const token = searchParams.get('token');
-          const email = searchParams.get('email');
+          const emailParam = searchParams.get('email');
+          const email = emailParam || (typeof window !== 'undefined' ? sessionStorage.getItem('pending_email') : null);
           const code = searchParams.get('code');
 
-          if (tokenHash && type === 'signup') {
+          const effectiveTokenHash = tokenHash || hashTokenHash;
+
+          if (effectiveTokenHash && type === 'signup') {
             const { error } = await supabase.auth.verifyOtp({
-              token_hash: tokenHash,
+              token_hash: effectiveTokenHash,
               type: 'signup'
             });
 
@@ -78,7 +86,7 @@ export default function VerifyEmailPage() {
             const { error } = await supabase.auth.verifyOtp({
               token,
               type: 'signup',
-              email
+              email: email as string
             });
             if (error) {
               console.error('Email verification error:', error);
@@ -125,6 +133,7 @@ export default function VerifyEmailPage() {
       sessionStorage.setItem('auth_type', 'email');
       sessionStorage.setItem('user_id', session.user.id);
       sessionStorage.setItem('user_email', session.user.email || '');
+      sessionStorage.removeItem('pending_email');
 
       const { data } = await supabase
         .from('exhibitors')

@@ -232,9 +232,10 @@ export default function Home() {
           setAuthCompleted(false); // ログアウト時はフラグをリセット
         } else if (event === 'SIGNED_IN' && session) {
           // 認証完了をマーク（Google/LINE認証の場合）
+          // 既存ユーザーでも新規ユーザーでも、認証完了後はメインUIを表示
           setAuthCompleted(true);
-          // 少し待ってからチェック（競合緩和）
-          setTimeout(() => checkAuth(), 100);
+          // checkAuth()を実行してuserとexhibitorの状態を更新
+          await checkAuth();
         }
       }
     );
@@ -386,6 +387,15 @@ export default function Home() {
 
     // 開発モードの場合は認証チェックをスキップ
   if (!DEV_MODE) {
+    // ローディング中は何も表示しない（認証チェックが完了するまで待つ）
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-sky-50">
+          <LoadingSpinner />
+        </div>
+      );
+    }
+
     // セッションが無効な場合、WelcomeScreenを表示
     if (!user) {
       return (

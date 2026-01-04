@@ -7,6 +7,7 @@ import { getCurrentUser, signOut } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Edit, LogOut, FileText, CheckCircle } from 'lucide-react';
+import RegistrationForm from './RegistrationForm';
 
 interface ExhibitorData {
   id: string;
@@ -32,7 +33,11 @@ const documentLabels = {
   fire_equipment_layout_image_url: '消防設備配置図',
 };
 
-export default function ExhibitorProfile() {
+interface ExhibitorProfileProps {
+  onExhibitorUpdate?: () => void;
+}
+
+export default function ExhibitorProfile({ onExhibitorUpdate }: ExhibitorProfileProps) {
   const router = useRouter();
   const [exhibitor, setExhibitor] = useState<ExhibitorData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +50,8 @@ export default function ExhibitorProfile() {
     try {
       const user = await getCurrentUser();
       if (!user) {
-        router.push('/');
+        // ログインしていない場合は何もしない（親コンポーネントで制御されるはず）
+        // router.push('/'); // 削除: 親で制御
         return;
       }
 
@@ -53,7 +59,7 @@ export default function ExhibitorProfile() {
         .from('exhibitors')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle(); // single()だと見つからない場合にエラーになるのでmaybeSingleに変更
 
       if (error) throw error;
       setExhibitor(data);
@@ -61,6 +67,13 @@ export default function ExhibitorProfile() {
       console.error('出店者情報取得エラー:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRegistrationComplete = async () => {
+    await fetchExhibitorData();
+    if (onExhibitorUpdate) {
+      onExhibitorUpdate();
     }
   };
 
@@ -83,25 +96,7 @@ export default function ExhibitorProfile() {
 
   if (!exhibitor) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50 p-4">
-        <Card className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-sm">
-          <CardContent className="pt-6 text-center">
-            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              出店者情報が登録されていません
-            </h3>
-            <p className="text-sm text-gray-600 mb-6">
-              情報を登録してイベントに申し込みましょう
-            </p>
-            <Button
-              onClick={() => router.push('/register')}
-              className="h-10 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg px-6 transition-colors"
-            >
-              情報を登録する
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <RegistrationForm onRegistrationComplete={handleRegistrationComplete} />
     );
   }
 

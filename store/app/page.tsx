@@ -24,10 +24,20 @@ export default function Home() {
 
   useEffect(() => {
     const channel = typeof window !== 'undefined' ? new BroadcastChannel('auth-flow') : null;
+    let safetyTimeout: NodeJS.Timeout;
+
     if (channel) {
       channel.onmessage = (e) => {
-        if (e?.data?.type === 'verify-begin') setPauseAuth(true);
-        if (e?.data?.type === 'verify-end') setPauseAuth(false);
+        if (e?.data?.type === 'verify-begin') {
+          setPauseAuth(true);
+          // 安全策: 15秒後に強制的にロックを解除
+          clearTimeout(safetyTimeout);
+          safetyTimeout = setTimeout(() => setPauseAuth(false), 15000);
+        }
+        if (e?.data?.type === 'verify-end') {
+          setPauseAuth(false);
+          clearTimeout(safetyTimeout);
+        }
       };
     }
 
@@ -38,10 +48,6 @@ export default function Home() {
       async (event, session) => {
         if (pauseAuth) return;
         if (event === 'SIGNED_OUT' || !session) {
-          // セッションが無効な場合、sessionStorageを完全にクリア
-          if (typeof window !== 'undefined') {
-            sessionStorage.clear();
-          }
           setUser(null);
           setExhibitor(null);
         } else if (event === 'SIGNED_IN' && session) {
@@ -53,13 +59,15 @@ export default function Home() {
     return () => {
       subscription.unsubscribe();
       channel?.close();
+      clearTimeout(safetyTimeout);
     };
   }, [pauseAuth]);
 
   const checkAuth = async () => {
     try {
       if (pauseAuth) {
-        setLoading(false);
+        // 認証一時停止中はローディング状態を維持しないが、チェックもしない
+        // UI側でpauseAuthの状態をハンドリングする
         return;
       }
       setLoading(true);
@@ -68,10 +76,6 @@ export default function Home() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
-        // セッションが無効な場合、sessionStorageを完全にクリア
-        if (typeof window !== 'undefined') {
-          sessionStorage.clear();
-        }
         setUser(null);
         setExhibitor(null);
         setLoading(false);
@@ -81,10 +85,6 @@ export default function Home() {
       // ユーザー情報を取得
       const currentUser = await getCurrentUser();
       if (!currentUser) {
-        // ユーザーが取得できない場合、sessionStorageを完全にクリア
-        if (typeof window !== 'undefined') {
-          sessionStorage.clear();
-        }
         setUser(null);
         setExhibitor(null);
         setLoading(false);
@@ -108,14 +108,12 @@ export default function Home() {
       setExhibitor(exhibitorData || null);
     } catch (error) {
       console.error('Error checking auth:', error);
-      // エラーが発生した場合も、sessionStorageを完全にクリア
-      if (typeof window !== 'undefined') {
-        sessionStorage.clear();
-      }
       setUser(null);
       setExhibitor(null);
     } finally {
-      setLoading(false);
+      if (!pauseAuth) {
+        setLoading(false);
+      }
     }
   };
 
@@ -131,6 +129,15 @@ export default function Home() {
     }
   }, [loading, DEV_MODE]);
 
+  if (pauseAuth) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50">
+        <LoadingSpinner />
+        <p className="mt-4 text-gray-600 font-medium">別のタブで認証を行っています...</p>
+      </div>
+    );
+  }
+
   if (loading && !DEV_MODE) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sky-50">
@@ -145,20 +152,28 @@ export default function Home() {
     if (!user) {
       return <WelcomeScreen />;
     }
-
-    // セッションが有効だが未登録の場合、RegistrationFormを表示
-    if (!exhibitor) {
-      return <RegistrationForm onRegistrationComplete={() => checkAuth()} />;
-    }
+    
+    // 以前はここでRegistrationFormを強制表示していたが、
+    // 未登録ユーザーでもメイン画面（EventList等）にはアクセスできるように変更
+    // if (!exhibitor) {
+    //   return <RegistrationForm onRegistrationComplete={() => checkAuth()} />;
+    // }
   }
 
   // セッションが有効で登録済みの場合、メイン画面を表示
   const renderContent = () => {
     switch (currentView) {
       case 'search':
-        return <EventList />;
+        // EventListにexhibitor情報を渡して、申込時の制御を行えるようにする
+        return (
+          <EventList 
+            exhibitor={exhibitor} 
+            onNavigateToProfile={() => setCurrentView('profile')} 
+          />
+        ); 
       case 'profile':
-        return <ExhibitorProfile />;
+        // プロフィール画面で未登録時の登録フォーム表示を行う
+        return <ExhibitorProfile onExhibitorUpdate={() => checkAuth()} />;
       case 'applications':
         return <ApplicationManagement />;
       case 'notifications':

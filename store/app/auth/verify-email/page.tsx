@@ -191,7 +191,7 @@ export default function VerifyEmailPage() {
                 メールアドレスの確認が完了しました
               </h1>
               <p className="text-sm text-gray-600 mb-6">
-                登録フォームにリダイレクトします...
+                メインページにリダイレクトします...
               </p>
               <Button
                 onClick={() => router.push('/')}

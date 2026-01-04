@@ -36,7 +36,12 @@ interface SearchFilters {
   genre: string;
 }
 
-export default function EventList() {
+interface EventListProps {
+  exhibitor?: any; // 型定義は厳密に行うべきですが、一旦anyで
+  onNavigateToProfile?: () => void;
+}
+
+export default function EventList({ exhibitor, onNavigateToProfile }: EventListProps) {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
@@ -411,7 +416,15 @@ export default function EventList() {
                 image={event.main_image_url || undefined}
                 status={event.approval_status as any}
                 accent="store"
-                onClick={() => router.push(`/events/${event.id}`)}
+                onClick={() => {
+                  if (!exhibitor) {
+                    if (confirm('イベントへの申し込みには出店者情報の登録が必要です。\n登録画面へ移動しますか？')) {
+                      onNavigateToProfile?.();
+                    }
+                    return;
+                  }
+                  router.push(`/events/${event.id}`);
+                }}
               />
             ))}
           </div>

@@ -59,12 +59,15 @@ export default function VerifyEmailPage() {
       // タイムアウト設定（15秒）
       timeoutId = setTimeout(async () => {
         if (status === 'verifying') {
+          console.log('Timeout reached, checking session...');
           // タイムアウト時も念のためセッション確認
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
+            console.log('Session found on timeout');
             await handleSuccess(session);
             return;
           }
+          console.log('No session found on timeout');
           setStatus('error');
           setErrorMessage('処理がタイムアウトしました。確認は完了している可能性があります。');
         }
@@ -108,18 +111,10 @@ export default function VerifyEmailPage() {
           return Promise.race([promise, timeout]);
         };
 
-        // 2. 既存セッションのチェック
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (session) {
-          await handleSuccess(session);
-          return;
-        }
-
-        // 3. パラメータによる手動検証
-
+        // パラメータ取得
+        const accessToken = hashParams.access_token;
+        const refreshToken = hashParams.refresh_token;
         const code = searchParams.get('code');
-        // tokenパラメータが長い文字列（ハッシュ）の場合はtoken_hashとして扱う
         let token_hash = searchParams.get('token_hash') || hashParams.token_hash;
         const rawToken = searchParams.get('token') || hashParams.token;
         
@@ -129,20 +124,45 @@ export default function VerifyEmailPage() {
 
         const type = (searchParams.get('type') || hashParams.type || 'signup') as any;
         const emailParam = searchParams.get('email') || hashParams.email;
-        const accessToken = hashParams.access_token;
-        const refreshToken = hashParams.refresh_token;
 
+        console.log('Token check:', { hasAccess: !!accessToken, hasRefresh: !!refreshToken, hasCode: !!code, hasTokenHash: !!token_hash });
+
+        // 優先順位変更: アクセストークンがある場合は、既存セッション確認よりも優先してセットする
+        // (メールリンクからの遷移の場合、既存セッションがあっても新しいトークンで更新すべきケースが多いため)
         if (accessToken && refreshToken) {
+          console.log('Setting session from hash params...');
           const { data, error } = await withTimeout(supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           }));
-          if (error) throw error;
+          
+          if (error) {
+            console.error('Set session error:', error);
+            throw error;
+          }
+          
           if (data.session) {
+            console.log('Session set successfully');
             await handleSuccess(data.session);
             return;
+          } else {
+             console.warn('Session data is null after setSession');
           }
-        } else if (code) {
+        } 
+        
+        // その他のケースでは既存セッションをチェック
+        console.log('Checking existing session...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log('Existing session found');
+          await handleSuccess(session);
+          return;
+        }
+
+        // パラメータによる手動検証 (setSession以外)
+        if (code) {
+          console.log('Exchanging code for session...');
           const { data, error } = await withTimeout(supabase.auth.exchangeCodeForSession(code));
           if (error) throw error;
           if (data.session) {
@@ -150,6 +170,7 @@ export default function VerifyEmailPage() {
             return;
           }
         } else if (token_hash) {
+          console.log('Verifying OTP with token_hash...');
           const { data, error } = await withTimeout(supabase.auth.verifyOtp({
             token_hash,
             type,
@@ -160,6 +181,7 @@ export default function VerifyEmailPage() {
             return;
           }
         } else if (rawToken && emailParam) {
+           console.log('Verifying OTP with email & token...');
            // 旧形式または特殊なケース
            const { data, error } = await withTimeout(supabase.auth.verifyOtp({
              email: emailParam,

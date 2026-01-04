@@ -158,40 +158,46 @@ export default function RegistrationForm() {
 
     try {
       const user = await getCurrentUser();
+      console.log('Registration attempt - User ID:', user?.id);
+      
       if (!user) {
-        throw new Error('認証されていません');
-      }
-
-      const uploadPromises: Promise<string>[] = [];
-      const imageFields = [
-        'businessLicenseImage',
-        'vehicleInspectionImage',
-        'automobileInspectionImage',
-        'plInsuranceImage',
-        'fireEquipmentLayoutImage',
-      ] as const;
-
-      const imageUrls: Record<string, string> = {};
-
-      for (const field of imageFields) {
-        const file = formData[field];
-        if (file) {
-          const path = `exhibitors/${user.id}/${field}_${Date.now()}.${file.name.split('.').pop()}`;
-          uploadPromises.push(
-            uploadImage('documents', path, file).then(url => {
-              imageUrls[field.replace('Image', 'ImageUrl')] = url;
-              return url;
-            })
-          );
+        // セッション切れの可能性があるので、もう一度取得を試みる
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          console.log('Session recovered - User ID:', session.user.id);
+          // 続行
+        } else {
+          throw new Error('ログインが必要です。再度ログインしてください。');
         }
       }
 
-      await Promise.all(uploadPromises);
+      const userId = user?.id || (await supabase.auth.getSession()).data.session?.user.id;
+      if (!userId) throw new Error('ユーザーIDの取得に失敗しました');
 
+      // 画像アップロード処理
+      const imageUrls: Record<string, string | null> = {};
+      const imageFields = [
+        { key: 'businessLicenseImage', name: 'business_license' },
+        { key: 'vehicleInspectionImage', name: 'vehicle_inspection' },
+        { key: 'automobileInspectionImage', name: 'automobile_inspection' },
+        { key: 'plInsuranceImage', name: 'pl_insurance' },
+        { key: 'fireEquipmentLayoutImage', name: 'fire_equipment_layout' },
+      ];
+
+      for (const field of imageFields) {
+        const file = (formData as any)[field.key];
+        if (file) {
+          const url = await uploadImage(file, `exhibitors/${userId}/${field.name}`);
+          imageUrls[`${field.key}Url`] = url;
+        }
+      }
+
+      // 出店者データの保存
+      console.log('Inserting exhibitor data for:', userId);
       const { error: insertError } = await supabase
         .from('exhibitors')
         .insert({
-          user_id: user.id,
+          user_id: userId,
           name: formData.name,
           gender: formData.gender,
           age: parseInt(formData.age),

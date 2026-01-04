@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -10,8 +10,9 @@ import ExhibitorProfile from './components/ExhibitorProfile';
 import ApplicationManagement from './components/ApplicationManagement';
 import NotificationBox from './components/NotificationBox';
 import LoadingSpinner from './components/LoadingSpinner';
-import { Bell, History, Search, User } from 'lucide-react';
+import { Bell, History, Search, User, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 type View = 'search' | 'profile' | 'applications' | 'notifications';
 
@@ -21,48 +22,116 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('search');
   const [pauseAuth, setPauseAuth] = useState(false);
+  const [authError, setAuthError] = useState<{title: string, message: string} | null>(null);
+  const processingRef = useRef(false);
 
+  // タブ間同期（認証フローの一時停止制御）
   useEffect(() => {
     const channel = typeof window !== 'undefined' ? new BroadcastChannel('auth-flow') : null;
-    let safetyTimeout: NodeJS.Timeout;
-
+    let safetyTimeout: ReturnType<typeof setTimeout>;
     if (channel) {
       channel.onmessage = (e) => {
         if (e?.data?.type === 'verify-begin') {
           setPauseAuth(true);
-          // 安全策: 15秒後に強制的にロックを解除
           clearTimeout(safetyTimeout);
           safetyTimeout = setTimeout(() => setPauseAuth(false), 15000);
-        }
-        if (e?.data?.type === 'verify-end') {
+        } else if (e?.data?.type === 'verify-end') {
           setPauseAuth(false);
           clearTimeout(safetyTimeout);
         }
       };
     }
-    // メールリンクの #token_hash を直接処理してセッション確立
+    return () => {
+      channel?.close();
+      clearTimeout(safetyTimeout);
+    };
+  }, []);
+
+  // メールリンクのハッシュ処理と認証状態監視
+  useEffect(() => {
     const processHashToken = async () => {
       try {
         if (typeof window !== 'undefined') {
-          const hp = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-          const th = hp.get('token_hash');
-          const type = hp.get('type');
+          // ハッシュパラメータの取得
+          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+          const searchParams = new URLSearchParams(window.location.search);
+          
+          // エラーチェック (ハッシュまたはクエリパラメータ)
+          const error = hashParams.get('error') || searchParams.get('error');
+          const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
+
+          if (error) {
+            console.error('Auth error from URL:', error, errorDescription);
+            setAuthError({
+              title: '認証エラー',
+              message: errorDescription?.replace(/\+/g, ' ') || '認証リンクが無効か期限切れです。'
+            });
+            history.replaceState(null, '', window.location.pathname);
+            return;
+          }
+
+          // PKCEフロー (code) の処理
+          const code = searchParams.get('code');
+          if (code) {
+            if (processingRef.current) return;
+            processingRef.current = true;
+            
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            
+            if (error) {
+               console.error('Exchange code error:', error);
+               setAuthError({
+                 title: '認証失敗',
+                 message: error.message || '認証コードの交換に失敗しました。'
+               });
+            } else {
+               history.replaceState(null, '', window.location.pathname);
+            }
+            processingRef.current = false;
+            return;
+          }
+
+          // Implicitフロー (token_hash) の処理
+          const th = hashParams.get('token_hash');
+          const type = hashParams.get('type');
+          
           if (th && (type === 'signup' || !type)) {
-            await supabase.auth.verifyOtp({ token_hash: th, type: 'signup' as any });
-            // ハッシュをクリア
-            history.replaceState(null, '', window.location.pathname + window.location.search);
+            if (processingRef.current) return;
+            processingRef.current = true;
+            
+            const { error } = await supabase.auth.verifyOtp({ token_hash: th, type: 'signup' as any });
+            
+            if (error) {
+              console.error('Verify OTP error:', error);
+              setAuthError({
+                title: '認証失敗',
+                message: error.message || '認証に失敗しました。リンクが期限切れの可能性があります。'
+              });
+            } else {
+              // 成功時はハッシュをクリア
+              history.replaceState(null, '', window.location.pathname);
+            }
+            processingRef.current = false;
           }
         }
       } catch (err) {
         console.error('Error processing hash token:', err);
+        setAuthError({
+          title: 'システムエラー',
+          message: '予期せぬエラーが発生しました。'
+        });
+        processingRef.current = false;
       }
     };
 
     processHashToken().finally(() => {
-      checkAuth();
+      if (!authError) {
+        checkAuth();
+      } else {
+        setLoading(false);
+      }
     });
-    
-    // 認証状態の変更を監視
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (pauseAuth) return;
@@ -77,8 +146,6 @@ export default function Home() {
 
     return () => {
       subscription.unsubscribe();
-      channel?.close();
-      clearTimeout(safetyTimeout);
     };
   }, [pauseAuth]);
 
@@ -153,6 +220,34 @@ export default function Home() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50">
         <LoadingSpinner />
         <p className="mt-4 text-gray-600 font-medium">別のタブで認証を行っています...</p>
+      </div>
+    );
+  }
+
+  // 認証エラー時の表示
+  if (authError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-red-100 max-w-md w-full text-center">
+          <div className="flex justify-center mb-4">
+            <div className="h-16 w-16 bg-red-50 rounded-full flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+            </div>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{authError.title}</h2>
+          <p className="text-gray-600 mb-6">{authError.message}</p>
+          <Button 
+            onClick={() => {
+              setAuthError(null);
+              setLoading(true);
+              // URLのハッシュやクエリパラメータをクリアしてリロード
+              window.location.href = window.location.origin;
+            }}
+            className="bg-sky-500 hover:bg-sky-600 text-white w-full"
+          >
+            トップページへ戻る
+          </Button>
+        </div>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [error, setError] = useState('');
@@ -74,5 +74,13 @@ export default function AuthCallback() {
     <div className="min-h-screen flex items-center justify-center bg-sky-50">
       <LoadingSpinner />
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

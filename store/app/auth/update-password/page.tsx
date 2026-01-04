@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
-export default function UpdatePasswordPage() {
+function UpdatePasswordContent() {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -131,7 +132,7 @@ export default function UpdatePasswordPage() {
                     disabled={loading}
                     className="w-full h-10 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? '更新中...' : 'パスワードを更新'}
+                    {loading ? <LoadingSpinner /> : 'パスワードを更新'}
                   </Button>
                 </form>
               </>
@@ -140,5 +141,13 @@ export default function UpdatePasswordPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function UpdatePasswordPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <UpdatePasswordContent />
+    </Suspense>
   );
 }

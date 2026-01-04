@@ -4,7 +4,6 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import WelcomeScreen from './components/WelcomeScreen';
-import RegistrationForm from './components/RegistrationForm';
 import EventList from './components/EventList';
 import ExhibitorProfile from './components/ExhibitorProfile';
 import ApplicationManagement from './components/ApplicationManagement';

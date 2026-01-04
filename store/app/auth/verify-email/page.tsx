@@ -58,7 +58,14 @@ export default function VerifyEmailPage() {
       }
 
       setStatus('success');
-      router.replace('/');
+
+      // フォーム画面に留まらないよう、確立済みセッションを保持したまま
+      // メインUIへ即座に遷移する
+      if (typeof window !== 'undefined') {
+        window.location.replace('/');
+      } else {
+        router.replace('/');
+      }
     };
 
     const ensureSessionAndRedirect = async () => {

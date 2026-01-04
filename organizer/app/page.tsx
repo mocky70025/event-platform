@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -20,13 +20,108 @@ export default function Home() {
   const [organizer, setOrganizer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('events');
+  const [authCompleted, setAuthCompleted] = useState(false); // 認証完了フラグ
+  const processingRef = useRef(false);
 
   useEffect(() => {
+    // メールリンクのハッシュ処理
+    const processHashToken = async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const hashString = window.location.hash.substring(1);
+          const hashParams = new URLSearchParams(hashString);
+          const searchParams = new URLSearchParams(window.location.search);
+          
+          // エラーチェック
+          const error = hashParams.get('error') || searchParams.get('error');
+          if (error) {
+            console.error('Auth error:', error);
+            return;
+          }
+
+          // PKCEフロー (code) の処理
+          const code = searchParams.get('code');
+          if (code) {
+            if (processingRef.current) return;
+            processingRef.current = true;
+            setLoading(true);
+            
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            
+            if (!error) {
+              setAuthCompleted(true); // 認証完了をマーク
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+              await checkAuth();
+            }
+            processingRef.current = false;
+            return;
+          }
+
+          // Implicitフロー (access_token) の処理
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken) {
+            if (processingRef.current) return;
+            processingRef.current = true;
+            setLoading(true);
+
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+
+            if (!error) {
+              setAuthCompleted(true); // 認証完了をマーク
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+              await checkAuth();
+            }
+            processingRef.current = false;
+            return;
+          }
+
+          // Implicitフロー (token_hash) の処理
+          const th = hashParams.get('token_hash');
+          const type = hashParams.get('type');
+          
+          if (th && (type === 'signup' || type === 'magiclink' || type === 'recovery' || !type)) {
+            if (processingRef.current) return;
+            processingRef.current = true;
+            setLoading(true);
+            
+            const { error } = await supabase.auth.verifyOtp({ 
+              token_hash: th, 
+              type: (type as any) || 'signup'
+            });
+            
+            if (!error) {
+              setAuthCompleted(true); // 認証完了をマーク
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+              await checkAuth();
+            }
+            processingRef.current = false;
+          }
+        }
+      } catch (err: any) {
+        console.error('Error processing hash token:', err);
+        processingRef.current = false;
+      }
+    };
+
+    processHashToken();
     checkAuth();
     
     // 認証状態の変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // トークン処理中はイベントによるチェックをスキップする（競合防止）
+        if (processingRef.current) {
+          return;
+        }
+
         if (event === 'SIGNED_OUT' || !session) {
           // セッションが無効な場合、sessionStorageを完全にクリア
           if (typeof window !== 'undefined') {
@@ -34,7 +129,10 @@ export default function Home() {
           }
           setUser(null);
           setOrganizer(null);
+          setAuthCompleted(false); // ログアウト時はフラグをリセット
         } else if (event === 'SIGNED_IN' && session) {
+          // 認証完了をマーク（Google/LINE認証の場合）
+          setAuthCompleted(true);
           await checkAuth();
         }
       }
@@ -118,8 +216,16 @@ export default function Home() {
   }
 
   // セッションが有効だが未登録の場合、RegistrationFormを表示
+  // メール認証完了後は登録フォームを表示し、フォーム完了後にメインUIに遷移
   if (!organizer) {
-    return <RegistrationForm />;
+    return (
+      <RegistrationForm 
+        onRegistrationComplete={() => {
+          setAuthCompleted(true);
+          checkAuth();
+        }}
+      />
+    );
   }
 
   // セッションが有効で登録済みの場合、メイン画面を表示

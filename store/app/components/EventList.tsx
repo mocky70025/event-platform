@@ -417,12 +417,15 @@ export default function EventList({ exhibitor, onNavigateToProfile }: EventListP
                 status={event.approval_status as any}
                 accent="store"
                 onClick={() => {
+                  router.push(`/events/${event.id}`);
+                }}
+                onApply={() => {
                   if (!exhibitor) {
-                    if (confirm('イベントへの申し込みには出店者情報の登録が必要です。\n登録画面へ移動しますか？')) {
-                      onNavigateToProfile?.();
-                    }
+                    alert('イベントへの申し込みには出店者情報の登録が必要です。\nプロフィール画面から登録を行ってください。');
+                    onNavigateToProfile?.();
                     return;
                   }
+                  // 申し込み処理はイベント詳細ページで行う
                   router.push(`/events/${event.id}`);
                 }}
               />

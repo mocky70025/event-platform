@@ -26,7 +26,7 @@ export default function Home() {
   const processingRef = useRef(false);
   const checkingAuthRef = useRef(false); // checkAuthの重複実行防止用
   const [debugInfo, setDebugInfo] = useState<string>(''); // デバッグ情報
-  const [emailVerificationCompleted, setEmailVerificationCompleted] = useState(false); // メール認証完了フラグ
+  const [authCompleted, setAuthCompleted] = useState(false); // 認証完了フラグ（メール/Google/LINE）
   
   // 未読通知数を取得するフックをここに移動
   const [unreadCount, setUnreadCount] = useState(0);
@@ -108,7 +108,7 @@ export default function Home() {
                });
             } else {
                setDebugInfo(prev => prev + '\nCode exchange successful');
-               setEmailVerificationCompleted(true); // メール認証完了をマーク
+               setAuthCompleted(true); // 認証完了をマーク（Google/LINE認証含む）
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
                await checkAuth();
@@ -141,7 +141,7 @@ export default function Home() {
                });
              } else {
                setDebugInfo(prev => prev + '\nSession set manually from hash');
-               setEmailVerificationCompleted(true); // メール認証完了をマーク
+               setAuthCompleted(true); // 認証完了をマーク
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
                await checkAuth();
@@ -174,7 +174,7 @@ export default function Home() {
               });
             } else {
               setDebugInfo(prev => prev + '\nOTP verification successful');
-              setEmailVerificationCompleted(true); // メール認証完了をマーク
+              setAuthCompleted(true); // 認証完了をマーク
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
@@ -208,7 +208,10 @@ export default function Home() {
         if (event === 'SIGNED_OUT' || !session) {
           setUser(null);
           setExhibitor(null);
+          setAuthCompleted(false); // ログアウト時はフラグをリセット
         } else if (event === 'SIGNED_IN' && session) {
+          // 認証完了をマーク（Google/LINE認証の場合）
+          setAuthCompleted(true);
           // 少し待ってからチェック（競合緩和）
           setTimeout(() => checkAuth(), 100);
         }
@@ -376,13 +379,16 @@ export default function Home() {
     }
 
     // ユーザーは認証済みだが、出店者情報が未登録の場合
-    // メール認証完了直後はイベント一覧を表示（登録はプロフィール画面から可能）
+    // 認証完了直後（メール/Google/LINE）はイベント一覧を表示（登録はプロフィール画面から可能）
     // それ以外の場合は登録フォームを表示
-    if (user && !exhibitor && !emailVerificationCompleted) {
+    if (user && !exhibitor && !authCompleted) {
       return (
         <div className="min-h-screen bg-sky-50">
           <RegistrationForm 
-            onRegistrationComplete={() => checkAuth()}
+            onRegistrationComplete={() => {
+              setAuthCompleted(true);
+              checkAuth();
+            }}
           />
         </div>
       );

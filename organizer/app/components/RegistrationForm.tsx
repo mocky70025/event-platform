@@ -19,7 +19,11 @@ interface FormData {
   email: string;
 }
 
-export default function RegistrationForm() {
+interface RegistrationFormProps {
+  onRegistrationComplete?: () => void;
+}
+
+export default function RegistrationForm({ onRegistrationComplete }: RegistrationFormProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -100,7 +104,12 @@ export default function RegistrationForm() {
       if (insertError) throw insertError;
 
       sessionStorage.removeItem('organizer_draft');
-      router.push('/');
+      
+      if (onRegistrationComplete) {
+        onRegistrationComplete();
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
       setError(err.message || '登録に失敗しました');
     } finally {

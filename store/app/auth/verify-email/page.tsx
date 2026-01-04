@@ -79,13 +79,11 @@ export default function VerifyEmailPage() {
 
         const hashAccessToken = hashParams?.get('access_token');
         const hashRefreshToken = hashParams?.get('refresh_token');
-        const hashExpiresIn = hashParams?.get('expires_in');
 
         if (hashAccessToken && hashRefreshToken) {
           const { error: sessionError } = await supabase.auth.setSession({
             access_token: hashAccessToken,
             refresh_token: hashRefreshToken,
-            expires_in: hashExpiresIn ? parseInt(hashExpiresIn, 10) : undefined,
           });
 
           if (sessionError) {

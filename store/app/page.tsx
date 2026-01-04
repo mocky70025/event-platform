@@ -360,7 +360,6 @@ export default function Home() {
   if (!DEV_MODE) {
     // セッションが無効な場合、WelcomeScreenを表示
     if (!user) {
-        // ★★★ デバッグ情報をWelcomeScreenに渡すか、あるいはここで表示する ★★★
       return (
         <div className="relative">
             <div className="absolute top-0 left-0 right-0 z-50 bg-black/80 text-white text-[10px] p-2 max-h-32 overflow-auto pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
@@ -368,6 +367,17 @@ export default function Home() {
                 {debugInfo.split('\n').map((line, i) => <div key={i}>{line}</div>)}
             </div>
             <WelcomeScreen />
+        </div>
+      );
+    }
+
+    // ユーザーは認証済みだが、出店者情報が未登録の場合は登録フォームを表示
+    if (user && !exhibitor) {
+      return (
+        <div className="min-h-screen bg-sky-50">
+          <RegistrationForm 
+            onRegistrationComplete={() => checkAuth()}
+          />
         </div>
       );
     }

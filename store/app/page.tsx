@@ -133,7 +133,7 @@ export default function Home() {
 
     // セッションが有効だが未登録の場合、RegistrationFormを表示
     if (!exhibitor) {
-      return <RegistrationForm />;
+      return <RegistrationForm onRegistrationComplete={() => checkAuth()} />;
     }
   }
 

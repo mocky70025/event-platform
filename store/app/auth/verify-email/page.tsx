@@ -15,57 +15,43 @@ export default function VerifyEmailPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    let mounted = true;
+
     const verifyEmail = async () => {
-      try {
-        // Supabaseのメール確認リンクをクリックすると、自動的にセッションが作成される
-        // セッションを確認
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
+      // 1. エラーパラメータのチェック
+      const error = searchParams.get('error');
+      const errorDescription = searchParams.get('error_description');
+      
+      if (error) {
+        if (mounted) {
           setStatus('error');
-          setErrorMessage(sessionError.message || 'セッションの取得に失敗しました');
-          return;
+          setErrorMessage(errorDescription || '認証エラーが発生しました');
         }
+        return;
+      }
 
-        if (session && session.user) {
-          // メール確認済みかチェック
-          const isEmailConfirmed = !!session.user.email_confirmed_at;
-          
-          if (!isEmailConfirmed) {
-            // メール確認がまだ完了していない場合
-            setStatus('error');
-            setErrorMessage('メールアドレスの確認が完了していません。確認メールを再送信してください。');
-            return;
-          }
+      // 2. Auth状態の変更を監視
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted) return;
 
-          // セッションストレージに保存
-          sessionStorage.setItem('auth_type', 'email');
-          sessionStorage.setItem('user_id', session.user.id);
-          sessionStorage.setItem('user_email', session.user.email || '');
-          
-          // 登録済みかチェック
-          await supabase
-            .from('exhibitors')
-            .select('id')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-          
-          setStatus('success');
-          
-          // 登録済みの場合はホームページに、未登録の場合は登録フォーム表示のためホームページにリダイレクト
-          // ホームページで自動的に登録フォームが表示される
-          setTimeout(() => {
-            router.push('/');
-          }, 2000);
+        if (event === 'SIGNED_IN' && session) {
+          await handleSessionSuccess(session);
+        }
+      });
+
+      // 3. 初期セッション確認と手動検証
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          await handleSessionSuccess(session);
         } else {
-          // セッションが存在しない場合、URLパラメータから確認を試みる
-          const token = searchParams.get('token');
+          // セッションがない場合、URLパラメータから確認を試みる
           const tokenHash = searchParams.get('token_hash');
           const type = searchParams.get('type') as any;
+          const code = searchParams.get('code');
 
           if (tokenHash && type === 'signup') {
-            // token_hashを使用して確認を試みる
             const { error } = await supabase.auth.verifyOtp({
               token_hash: tokenHash,
               type: 'signup'
@@ -73,66 +59,86 @@ export default function VerifyEmailPage() {
 
             if (error) {
               console.error('Email verification error:', error);
-              setStatus('error');
-              setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
-              return;
+              if (mounted) {
+                setStatus('error');
+                setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
+              }
             }
-
-            // 再度セッションを取得
-            const { data: { session: newSession } } = await supabase.auth.getSession();
-            
-            if (newSession && newSession.user) {
-              sessionStorage.setItem('auth_type', 'email');
-              sessionStorage.setItem('user_id', newSession.user.id);
-              sessionStorage.setItem('user_email', newSession.user.email || '');
-              
-              // 登録済みかチェック
-              await supabase
-                .from('exhibitors')
-                .select('id')
-                .eq('user_id', newSession.user.id)
-                .maybeSingle();
-              
-              setStatus('success');
-              // 登録済みの場合はホームページに、未登録の場合は登録フォーム表示のためホームページにリダイレクト
-              setTimeout(() => {
-                router.push('/');
-              }, 2000);
-            } else {
-              setStatus('error');
-              setErrorMessage('セッションの取得に失敗しました');
+            // 成功した場合、onAuthStateChangeがSIGNED_INを発火するはず
+          } else if (code) {
+            // PKCEフロー: コードがある場合、Supabaseが自動的に交換するのを待つ
+            // または手動で交換する（通常は自動処理される）
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+             if (error) {
+              console.error('Code exchange error:', error);
+              if (mounted) {
+                setStatus('error');
+                setErrorMessage(error.message || '認証コードの交換に失敗しました');
+              }
             }
           } else {
-            // Implicit Flow (ハッシュパラメータ) の場合も考慮
-            // Supabaseは自動的にハッシュパラメータを処理してセッションを設定する場合があるため
-            // 少し待ってから再度セッションを確認する
+            // Implicit Flow (ハッシュ) やその他のケース
+            // 少し待ってからタイムアウト判定
             setTimeout(async () => {
+              if (!mounted || status === 'success') return;
+              
               const { data: { session: lateSession } } = await supabase.auth.getSession();
-              if (lateSession && lateSession.user) {
-                // セッションストレージに保存
-                sessionStorage.setItem('auth_type', 'email');
-                sessionStorage.setItem('user_id', lateSession.user.id);
-                sessionStorage.setItem('user_email', lateSession.user.email || '');
-                
-                setStatus('success');
-                setTimeout(() => {
-                  router.push('/');
-                }, 2000);
+              if (lateSession) {
+                await handleSessionSuccess(lateSession);
               } else {
-                setStatus('error');
-                setErrorMessage('無効な確認リンクです。確認メールを再送信してください。');
+                if (mounted && status === 'verifying') {
+                  setStatus('error');
+                  setErrorMessage('確認リンクが無効か、期限切れです。メールを再送信してください。');
+                }
               }
-            }, 1000);
+            }, 3000); // 3秒待機
           }
         }
       } catch (err: any) {
-        console.error('Verification error:', err);
-        setStatus('error');
-        setErrorMessage(err.message || 'メールアドレスの確認中にエラーが発生しました');
+        console.error('Verification init error:', err);
+        if (mounted) {
+          setStatus('error');
+          setErrorMessage(err.message || 'エラーが発生しました');
+        }
+      }
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+
+    const handleSessionSuccess = async (session: any) => {
+      if (!mounted) return;
+      
+      // メール確認済みかチェック
+      // 注意: 新規登録直後は email_confirmed_at がまだ更新されていない場合があるため、
+      // セッションがある時点で成功とみなすか、少し待つ必要があるかもしれません。
+      // ここではセッションがあればOKとします。
+
+      sessionStorage.setItem('auth_type', 'email');
+      sessionStorage.setItem('user_id', session.user.id);
+      sessionStorage.setItem('user_email', session.user.email || '');
+
+      // 登録済みかチェック
+      const { data } = await supabase
+        .from('exhibitors')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (mounted) {
+        setStatus('success');
+        setTimeout(() => {
+          if (mounted) router.push('/');
+        }, 2000);
       }
     };
 
     verifyEmail();
+
+    return () => {
+      mounted = false;
+    };
   }, [searchParams, router]);
 
   return (

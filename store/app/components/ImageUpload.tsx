@@ -1,19 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import DocumentRecognizer from './DocumentRecognizer';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera } from 'lucide-react';
+import { Camera, Loader } from 'lucide-react';
+import { uploadImage } from '@/lib/storage';
 
 interface ImageUploadProps {
   label: string;
-  value?: string;
+  value?: string | null;
   onChange?: (url: string) => void;
-  onFileSelect: (file: File) => void;
+  onFileSelect?: (file: File) => void;
   required?: boolean;
-  enableOCR?: boolean;
-  documentType?: 'businessLicense' | 'vehicleInspection' | 'automobileInspection' | 'plInsurance';
-  onRecognized?: (data: any) => void;
+  documentType?: string;
+  userId?: string;
+  onUploadComplete?: (url: string) => void;
 }
 
 export default function ImageUpload({
@@ -22,25 +22,50 @@ export default function ImageUpload({
   onChange,
   onFileSelect,
   required = false,
-  enableOCR = false,
   documentType,
-  onRecognized,
+  userId,
+  onUploadComplete,
 }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(value || null);
   const [uploading, setUploading] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (value) {
+      setPreview(value);
+    }
+  }, [value]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // プレビュー表示
+    // Show local preview immediately
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
 
-    onFileSelect(file);
+    if (onFileSelect) {
+      onFileSelect(file);
+    }
+
+    if (userId && documentType && onUploadComplete) {
+      setUploading(true);
+      try {
+        const timestamp = new Date().getTime();
+        const path = `exhibitors/${userId}/${documentType}_${timestamp}`;
+        const url = await uploadImage('documents', path, file);
+        onUploadComplete(url);
+        if (onChange) onChange(url);
+      } catch (error) {
+        console.error('Upload failed:', error);
+        alert('画像のアップロードに失敗しました。');
+        setPreview(null);
+      } finally {
+        setUploading(false);
+      }
+    }
   };
 
   return (
@@ -68,7 +93,8 @@ export default function ImageUpload({
                     document.getElementById(`file-input-${label}`)?.click();
                   }}
                 >
-                  画像を変更
+                  {uploading ? <Loader className="animate-spin mr-2 h-4 w-4" /> : null}
+                  {uploading ? 'アップロード中...' : '画像を変更'}
                 </Button>
                 <input
                   id={`file-input-${label}`}
@@ -100,22 +126,6 @@ export default function ImageUpload({
           </label>
         )}
       </div>
-      {uploading && (
-        <div className="mt-3 text-sm text-gray-600">
-          アップロード中...
-        </div>
-      )}
-      {enableOCR && preview && documentType && (
-        <DocumentRecognizer
-          imageUrl={preview}
-          documentType={documentType}
-          onRecognized={(data) => {
-            if (onRecognized) {
-              onRecognized(data);
-            }
-          }}
-        />
-      )}
     </div>
   );
 }

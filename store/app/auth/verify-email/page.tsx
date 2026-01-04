@@ -1,246 +1,134 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [errorMessage, setErrorMessage] = useState('');
-  const processedRef = useRef(false);
 
   useEffect(() => {
-    if (processedRef.current) return;
-    processedRef.current = true;
-
     const verifyEmail = async () => {
-      let timeoutId: NodeJS.Timeout;
-
-      // 成功時の処理関数
-      const handleSuccess = async (session: any) => {
-        if (timeoutId) clearTimeout(timeoutId);
+      try {
+        // Supabaseのメール確認リンクをクリックすると、自動的にセッションが作成される
+        // セッションを確認
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (!session?.user) {
+        if (sessionError) {
+          console.error('Session error:', sessionError);
           setStatus('error');
-          setErrorMessage('ユーザー情報の取得に失敗しました');
+          setErrorMessage(sessionError.message || 'セッションの取得に失敗しました');
           return;
         }
 
-        // メール確認状態のチェック
-        sessionStorage.setItem('auth_type', 'email');
-        sessionStorage.setItem('user_id', session.user.id);
-        sessionStorage.setItem('user_email', session.user.email || '');
-        
-        try {
-          // 出店者情報の確認（必要であれば）
-          // エラーが出てもリダイレクトは阻害しないようにする
+        if (session && session.user) {
+          // メール確認済みかチェック
+          const isEmailConfirmed = !!session.user.email_confirmed_at;
+          
+          if (!isEmailConfirmed) {
+            // メール確認がまだ完了していない場合
+            setStatus('error');
+            setErrorMessage('メールアドレスの確認が完了していません。確認メールを再送信してください。');
+            return;
+          }
+
+          // セッションストレージに保存
+          sessionStorage.setItem('auth_type', 'email');
+          sessionStorage.setItem('user_id', session.user.id);
+          sessionStorage.setItem('user_email', session.user.email || '');
+          
+          // 登録済みかチェック
           await supabase
             .from('exhibitors')
             .select('id')
             .eq('user_id', session.user.id)
             .maybeSingle();
-        } catch (e) {
-          console.warn('Exhibitor check failed:', e);
-        }
-        
-        setStatus('success');
-        
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
-      };
-
-      // タイムアウト設定（15秒）
-      timeoutId = setTimeout(async () => {
-        if (status === 'verifying') {
-          console.log('Timeout reached, checking session...');
-          // タイムアウト時も念のためセッション確認
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            console.log('Session found on timeout');
-            await handleSuccess(session);
-            return;
-          }
-          console.log('No session found on timeout');
-          setStatus('error');
-          setErrorMessage('処理がタイムアウトしました。確認は完了している可能性があります。');
-        }
-      }, 15000);
-
-      try {
-        // 1. URLハッシュからのパラメータ取得（Implicit Flowやエラー用）
-        const getHashParams = () => {
-          if (typeof window === 'undefined') return {};
-          const hash = window.location.hash.replace(/^#/, '');
-          const params = new URLSearchParams(hash);
-          const result: Record<string, string> = {};
-          params.forEach((value, key) => { result[key] = value; });
-          return result;
-        };
-        const hashParams = getHashParams();
-        
-        // デバッグ用：パラメータ取得状況をコンソールに出力
-        console.log('Verify Email Params:', { 
-          search: Object.fromEntries(searchParams.entries()), 
-          hash: hashParams 
-        });
-
-        // エラーチェック（URLパラメータまたはハッシュパラメータ）
-        const error = searchParams.get('error') || hashParams.error;
-        const errorDesc = searchParams.get('error_description') || hashParams.error_description || searchParams.get('error_message') || hashParams.error_message;
-
-        if (error) {
-          if (timeoutId) clearTimeout(timeoutId);
-          console.error('Supabase auth error:', error, errorDesc);
-          setStatus('error');
-          setErrorMessage(decodeURIComponent(errorDesc || '認証エラーが発生しました'));
-          return;
-        }
-
-        // API呼び出しのタイムアウト制御用ラッパー
-        const withTimeout = async <T,>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
-          const timeout = new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('API request timeout')), ms)
-          );
-          return Promise.race([promise, timeout]);
-        };
-
-        // パラメータ取得
-        const accessToken = hashParams.access_token;
-        const refreshToken = hashParams.refresh_token;
-        const code = searchParams.get('code');
-        let token_hash = searchParams.get('token_hash') || hashParams.token_hash;
-        const rawToken = searchParams.get('token') || hashParams.token;
-        
-        if (!token_hash && rawToken && rawToken.length > 6) {
-          token_hash = rawToken;
-        }
-
-        const type = (searchParams.get('type') || hashParams.type || 'signup') as any;
-        const emailParam = searchParams.get('email') || hashParams.email;
-
-        console.log('Token check:', { hasAccess: !!accessToken, hasRefresh: !!refreshToken, hasCode: !!code, hasTokenHash: !!token_hash });
-
-        // 優先順位変更: アクセストークンがある場合は、既存セッション確認よりも優先してセットする
-        // (メールリンクからの遷移の場合、既存セッションがあっても新しいトークンで更新すべきケースが多いため)
-        if (accessToken && refreshToken) {
-          console.log('Setting session from hash params...');
-          const { data, error } = await withTimeout(supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          }));
           
-          if (error) {
-            console.error('Set session error:', error);
-            throw error;
-          }
+          setStatus('success');
           
-          if (data.session) {
-            console.log('Session set successfully');
-            await handleSuccess(data.session);
-            return;
+          // 登録済みの場合はホームページに、未登録の場合は登録フォーム表示のためホームページにリダイレクト
+          // ホームページで自動的に登録フォームが表示される
+          setTimeout(() => {
+            router.push('/');
+          }, 2000);
+        } else {
+          // セッションが存在しない場合、URLパラメータから確認を試みる
+          const token = searchParams.get('token');
+          const tokenHash = searchParams.get('token_hash');
+          const type = searchParams.get('type') as any;
+
+          if (tokenHash && type === 'signup') {
+            // token_hashを使用して確認を試みる
+            const { error } = await supabase.auth.verifyOtp({
+              token_hash: tokenHash,
+              type: 'signup'
+            });
+
+            if (error) {
+              console.error('Email verification error:', error);
+              setStatus('error');
+              setErrorMessage(error.message || 'メールアドレスの確認に失敗しました');
+              return;
+            }
+
+            // 再度セッションを取得
+            const { data: { session: newSession } } = await supabase.auth.getSession();
+            
+            if (newSession && newSession.user) {
+              sessionStorage.setItem('auth_type', 'email');
+              sessionStorage.setItem('user_id', newSession.user.id);
+              sessionStorage.setItem('user_email', newSession.user.email || '');
+              
+              // 登録済みかチェック
+              await supabase
+                .from('exhibitors')
+                .select('id')
+                .eq('user_id', newSession.user.id)
+                .maybeSingle();
+              
+              setStatus('success');
+              // 登録済みの場合はホームページに、未登録の場合は登録フォーム表示のためホームページにリダイレクト
+              setTimeout(() => {
+                router.push('/');
+              }, 2000);
+            } else {
+              setStatus('error');
+              setErrorMessage('セッションの取得に失敗しました');
+            }
           } else {
-             console.warn('Session data is null after setSession');
+            // Implicit Flow (ハッシュパラメータ) の場合も考慮
+            // Supabaseは自動的にハッシュパラメータを処理してセッションを設定する場合があるため
+            // 少し待ってから再度セッションを確認する
+            setTimeout(async () => {
+              const { data: { session: lateSession } } = await supabase.auth.getSession();
+              if (lateSession && lateSession.user) {
+                // セッションストレージに保存
+                sessionStorage.setItem('auth_type', 'email');
+                sessionStorage.setItem('user_id', lateSession.user.id);
+                sessionStorage.setItem('user_email', lateSession.user.email || '');
+                
+                setStatus('success');
+                setTimeout(() => {
+                  router.push('/');
+                }, 2000);
+              } else {
+                setStatus('error');
+                setErrorMessage('無効な確認リンクです。確認メールを再送信してください。');
+              }
+            }, 1000);
           }
-        } 
-        
-        // その他のケースでは既存セッションをチェック
-        console.log('Checking existing session...');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (session) {
-          console.log('Existing session found');
-          await handleSuccess(session);
-          return;
         }
-
-        // パラメータによる手動検証 (setSession以外)
-        if (code) {
-          console.log('Exchanging code for session...');
-          const { data, error } = await withTimeout(supabase.auth.exchangeCodeForSession(code));
-          if (error) throw error;
-          if (data.session) {
-            await handleSuccess(data.session);
-            return;
-          }
-        } else if (token_hash) {
-          console.log('Verifying OTP with token_hash...');
-          const { data, error } = await withTimeout(supabase.auth.verifyOtp({
-            token_hash,
-            type,
-          }));
-          if (error) throw error;
-          if (data.session) {
-            await handleSuccess(data.session);
-            return;
-          }
-        } else if (rawToken && emailParam) {
-           console.log('Verifying OTP with email & token...');
-           // 旧形式または特殊なケース
-           const { data, error } = await withTimeout(supabase.auth.verifyOtp({
-             email: emailParam,
-             token: rawToken,
-             type: 'email',
-           } as any));
-           if (error) throw error;
-           if (data.session) {
-             await handleSuccess(data.session);
-             return;
-           }
-        }
-
-        // 4. Auth State Changeリスナー (Implicit Flowなどで遅れてセッションが入る場合)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (event === 'SIGNED_IN' && session) {
-            subscription.unsubscribe();
-            await handleSuccess(session);
-          }
-        });
-
-        // パラメータもなく、セッションもない場合
-        if (!code && !token_hash && !rawToken && !session && !accessToken) {
-             // URLに何も情報がない場合、単にページを開いただけの可能性がある
-             // 3秒待って何もなければエラー表示
-             setTimeout(async () => {
-                 if (status === 'verifying') {
-                     // 念のためもう一度セッション確認
-                     const { data: { session: lateSession } } = await supabase.auth.getSession();
-                     if (lateSession) {
-                       await handleSuccess(lateSession);
-                       return;
-                     }
-
-                     setStatus('error');
-                     setErrorMessage('検証用トークンが見つかりません。URLが正しいか確認してください。');
-                 }
-             }, 3000);
-        }
-
       } catch (err: any) {
-        // エラー発生時も、念のためセッションがあるか確認する
-        // (APIがエラーを返しても、実は認証できているケースへの保険)
-        const { data: { session: fallbackSession } } = await supabase.auth.getSession();
-        if (fallbackSession) {
-          await handleSuccess(fallbackSession);
-          return;
-        }
-
-        clearTimeout(timeoutId);
         console.error('Verification error:', err);
         setStatus('error');
-        // エラーメッセージを少し親切に
-        const msg = err.message || 'メールアドレスの確認中にエラーが発生しました';
-        if (msg.includes('Timeout') || msg.includes('timeout')) {
-          setErrorMessage('サーバーからの応答がありませんでした。再読み込みするか、ログインをお試しください。');
-        } else {
-          setErrorMessage(msg);
-        }
+        setErrorMessage(err.message || 'メールアドレスの確認中にエラーが発生しました');
       }
     };
 

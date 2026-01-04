@@ -6,6 +6,8 @@ export interface User {
   user_metadata?: {
     name?: string;
     avatar_url?: string;
+    authType?: string;
+    [key: string]: any;
   };
 }
 

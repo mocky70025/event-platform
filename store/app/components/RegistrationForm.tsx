@@ -24,11 +24,11 @@ interface FormData {
   email: string;
   genreCategory: string;
   genreFreeText: string;
-  businessLicenseImage: File | null;
-  vehicleInspectionImage: File | null;
-  automobileInspectionImage: File | null;
-  plInsuranceImage: File | null;
-  fireEquipmentLayoutImage: File | null;
+  businessLicenseImageUrl: string | null;
+  vehicleInspectionImageUrl: string | null;
+  automobileInspectionImageUrl: string | null;
+  plInsuranceImageUrl: string | null;
+  fireEquipmentLayoutImageUrl: string | null;
   businessLicenseExpiry?: string;
   vehicleInspectionExpiry?: string;
   automobileInspectionExpiry?: string;
@@ -48,16 +48,28 @@ export default function RegistrationForm() {
     email: '',
     genreCategory: '',
     genreFreeText: '',
-    businessLicenseImage: null,
-    vehicleInspectionImage: null,
-    automobileInspectionImage: null,
-    plInsuranceImage: null,
-    fireEquipmentLayoutImage: null,
+    businessLicenseImageUrl: null,
+    vehicleInspectionImageUrl: null,
+    automobileInspectionImageUrl: null,
+    plInsuranceImageUrl: null,
+    fireEquipmentLayoutImageUrl: null,
     businessLicenseExpiry: '',
     vehicleInspectionExpiry: '',
     automobileInspectionExpiry: '',
     plInsuranceExpiry: '',
   });
+
+  const [userProfile, setUserProfile] = useState<{ userId: string } | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await getCurrentUser();
+      if (user) {
+        setUserProfile({ userId: user.id });
+      }
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     const saved = sessionStorage.getItem('exhibitor_draft');
@@ -73,19 +85,13 @@ export default function RegistrationForm() {
 
   const saveDraft = () => {
     const draft = {
-      name: formData.name,
-      gender: formData.gender,
-      age: formData.age,
-      phoneNumber: formData.phoneNumber,
-      email: formData.email,
-      genreCategory: formData.genreCategory,
-      genreFreeText: formData.genreFreeText,
-      businessLicenseExpiry: formData.businessLicenseExpiry,
-      vehicleInspectionExpiry: formData.vehicleInspectionExpiry,
-      automobileInspectionExpiry: formData.automobileInspectionExpiry,
-      plInsuranceExpiry: formData.plInsuranceExpiry,
+      ...formData
     };
     sessionStorage.setItem('exhibitor_draft', JSON.stringify(draft));
+  };
+
+  const removeDraft = () => {
+    sessionStorage.removeItem('exhibitor_draft');
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -93,32 +99,36 @@ export default function RegistrationForm() {
     saveDraft();
   };
 
-  const handleImageSelect = (field: keyof FormData, file: File) => {
-    setFormData(prev => ({ ...prev, [field]: file }));
+  const handleImageUpload = (field: keyof FormData, url: string) => {
+    setFormData(prev => ({ ...prev, [field]: url }));
+    saveDraft();
+
+    if (field === 'businessLicenseImageUrl') {
+      verifyBusinessLicense(url);
+    }
   };
 
-  const handleRecognized = (field: keyof FormData, data: any) => {
-    if (!data) return;
-    
-    console.log(`Recognized data for ${field}:`, data);
-
-    let expiry = '';
-    // APIのプロンプト定義に基づくキー名
-    if (field === 'businessLicenseExpiry') {
-        expiry = data['有効期限'] || data['有効期間'] || '';
-    } else if (field === 'vehicleInspectionExpiry') {
-        expiry = data['車検有効期限'] || data['有効期限'] || data['有効期間の満了する日'] || '';
-    } else if (field === 'automobileInspectionExpiry') {
-        expiry = data['保険期間'] || data['有効期限'] || '';
-    } else if (field === 'plInsuranceExpiry') {
-        expiry = data['保険期間'] || data['有効期限'] || '';
-    }
-
-    if (expiry) {
-        setFormData(prev => ({ ...prev, [field]: expiry }));
-        // 非同期更新のため、saveDraftはuseEffectで監視するか、ここで新しいstateを使って呼ぶ必要があるが
-        // 簡易的にここでもセットする（ただしprevには依存できないので注意）
-        // 今回はhandleInputChangeと同様の更新フローに乗せるため、以下のようにする
+  const verifyBusinessLicense = async (imageUrl: string) => {
+    try {
+      // APIを呼び出して有効期限を確認
+      const response = await fetch('/api/events/verify-business-license', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl }),
+      });
+      
+      if (!response.ok) throw new Error('Verification failed');
+      
+      const data = await response.json();
+      if (data.expirationDate) {
+        setFormData(prev => ({ ...prev, businessLicenseExpiry: data.expirationDate }));
+      }
+      
+      if (data.result === 'no') {
+        alert('営業許可証の有効期限が切れている、または無効な可能性があります。確認してください。');
+      }
+    } catch (e) {
+      console.error('License verification error:', e);
     }
   };
 
@@ -192,11 +202,11 @@ export default function RegistrationForm() {
 
     // 画像の必須チェック
     const requiredImages = [
-      formData.businessLicenseImage,
-      formData.vehicleInspectionImage,
-      formData.automobileInspectionImage,
-      formData.plInsuranceImage,
-      formData.fireEquipmentLayoutImage
+      formData.businessLicenseImageUrl,
+      formData.vehicleInspectionImageUrl,
+      formData.automobileInspectionImageUrl,
+      formData.plInsuranceImageUrl,
+      formData.fireEquipmentLayoutImageUrl
     ];
 
     if (requiredImages.some(img => !img)) {
@@ -207,39 +217,48 @@ export default function RegistrationForm() {
     setLoading(true);
 
     try {
-      const user = await getCurrentUser();
-      console.log('Registration attempt - User ID:', user?.id);
-      
+      let user = await getCurrentUser();
       if (!user) {
-        // セッション切れの可能性があるので、もう一度取得を試みる
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          console.log('Session recovered - User ID:', session.user.id);
-          // 続行
-        } else {
+        if (!session?.user) {
           throw new Error('ログインが必要です。再度ログインしてください。');
         }
+        user = session.user as any;
       }
 
-      const userId = user?.id || (await supabase.auth.getSession()).data.session?.user.id;
-      if (!userId) throw new Error('ユーザーIDの取得に失敗しました');
+      if (!user) throw new Error('ユーザーIDの取得に失敗しました');
+      const userId = user.id;
 
-      // 画像アップロード処理
-      const imageUrls: Record<string, string | null> = {};
-      const imageFields = [
-        { key: 'businessLicenseImage', name: 'business_license' },
-        { key: 'vehicleInspectionImage', name: 'vehicle_inspection' },
-        { key: 'automobileInspectionImage', name: 'automobile_inspection' },
-        { key: 'plInsuranceImage', name: 'pl_insurance' },
-        { key: 'fireEquipmentLayoutImage', name: 'fire_equipment_layout' },
-      ];
+      // 認証タイプに応じて重複登録チェック
+      const authType = user.user_metadata?.authType || 'line';
+      let existingUser = null;
 
-      for (const field of imageFields) {
-        const file = (formData as any)[field.key];
-        if (file) {
-          const url = await uploadImage('documents', `exhibitors/${userId}/${field.name}`, file);
-          imageUrls[`${field.key}Url`] = url;
-        }
+      if (authType === 'email') {
+        const { data } = await supabase
+          .from('exhibitors')
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+        existingUser = data;
+      } else {
+        // LINE認証の場合、user_metadataにline_user_idが含まれているか、
+        // あるいはexhibitorsテーブルのline_user_idカラムにuserIdを格納する設計か確認が必要。
+        // 旧版では line_user_id カラムに userId (Supabase Auth ID) を入れているのか、
+        // それとも LINE Provider ID を入れているのか？
+        // 旧版コード: .eq('line_user_id', userProfile.userId)
+        // ここでは userId を使う。
+        const { data } = await supabase
+          .from('exhibitors')
+          .select('id')
+          .eq('line_user_id', userId)
+          .single();
+        existingUser = data;
+      }
+
+      if (existingUser) {
+        alert('既に登録済みです。');
+        setLoading(false);
+        return;
       }
 
       // 出店者データの保存
@@ -248,27 +267,36 @@ export default function RegistrationForm() {
       const normalizedAge = parseInt(convertToHalfWidth(formData.age), 10);
       const normalizedPhone = convertToHalfWidth(formData.phoneNumber.replace(/-/g, ''));
 
+      const insertPayload: any = {
+        name: formData.name,
+        gender: formData.gender,
+        age: normalizedAge,
+        phone_number: normalizedPhone,
+        email: formData.email,
+        genre_category: formData.genreCategory || null,
+        genre_free_text: formData.genreFreeText || null,
+        business_license_image_url: formData.businessLicenseImageUrl || null,
+        vehicle_inspection_image_url: formData.vehicleInspectionImageUrl || null,
+        automobile_inspection_image_url: formData.automobileInspectionImageUrl || null,
+        pl_insurance_image_url: formData.plInsuranceImageUrl || null,
+        fire_equipment_layout_image_url: formData.fireEquipmentLayoutImageUrl || null,
+      };
+
+      if (authType === 'email') {
+        insertPayload.user_id = userId;
+      } else {
+        insertPayload.line_user_id = userId;
+      }
+
       const { error: insertError } = await supabase
         .from('exhibitors')
-        .insert({
-          user_id: userId,
-          name: formData.name,
-          gender: formData.gender,
-          age: normalizedAge,
-          phone_number: normalizedPhone,
-          email: formData.email,
-          genre_category: formData.genreCategory || null,
-          genre_free_text: formData.genreFreeText || null,
-          business_license_image_url: imageUrls.businessLicenseImageUrl || null,
-          vehicle_inspection_image_url: imageUrls.vehicleInspectionImageUrl || null,
-          automobile_inspection_image_url: imageUrls.automobileInspectionImageUrl || null,
-          pl_insurance_image_url: imageUrls.plInsuranceImageUrl || null,
-          fire_equipment_layout_image_url: imageUrls.fireEquipmentLayoutImageUrl || null,
-        });
+        .insert(insertPayload);
 
       if (insertError) throw insertError;
 
-      sessionStorage.removeItem('exhibitor_draft');
+      // ドラフト削除
+      await removeDraft();
+      
       router.push('/');
     } catch (err: any) {
       setError(err.message || '登録に失敗しました');
@@ -429,12 +457,12 @@ export default function RegistrationForm() {
                 <div>
                   <ImageUpload
                     label="営業許可証"
-                    onFileSelect={(file) => handleImageSelect('businessLicenseImage', file)}
-                    enableOCR={true}
-                    documentType="businessLicense"
-                    onRecognized={(data) => handleRecognized('businessLicenseExpiry', data)}
+                    value={formData.businessLicenseImageUrl}
+                    onUploadComplete={(url) => handleImageUpload('businessLicenseImageUrl', url)}
+                    userId={userProfile?.userId}
+                    documentType="business_license"
                   />
-                  {(formData.businessLicenseImage || formData.businessLicenseExpiry) && (
+                  {(formData.businessLicenseImageUrl || formData.businessLicenseExpiry) && (
                     <div className="mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
                        <Label className="text-xs font-semibold text-gray-700">有効期限 (自動認識)</Label>
                        <Input 
@@ -450,12 +478,12 @@ export default function RegistrationForm() {
                 <div>
                   <ImageUpload
                     label="車検証"
-                    onFileSelect={(file) => handleImageSelect('vehicleInspectionImage', file)}
-                    enableOCR={true}
-                    documentType="vehicleInspection"
-                    onRecognized={(data) => handleRecognized('vehicleInspectionExpiry', data)}
+                    value={formData.vehicleInspectionImageUrl}
+                    onUploadComplete={(url) => handleImageUpload('vehicleInspectionImageUrl', url)}
+                    userId={userProfile?.userId}
+                    documentType="vehicle_inspection"
                   />
-                  {(formData.vehicleInspectionImage || formData.vehicleInspectionExpiry) && (
+                  {(formData.vehicleInspectionImageUrl || formData.vehicleInspectionExpiry) && (
                     <div className="mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
                        <Label className="text-xs font-semibold text-gray-700">車検有効期限 (自動認識)</Label>
                        <Input 
@@ -471,12 +499,12 @@ export default function RegistrationForm() {
                 <div>
                   <ImageUpload
                     label="自賠責保険"
-                    onFileSelect={(file) => handleImageSelect('automobileInspectionImage', file)}
-                    enableOCR={true}
-                    documentType="automobileInspection"
-                    onRecognized={(data) => handleRecognized('automobileInspectionExpiry', data)}
+                    value={formData.automobileInspectionImageUrl}
+                    onUploadComplete={(url) => handleImageUpload('automobileInspectionImageUrl', url)}
+                    userId={userProfile?.userId}
+                    documentType="automobile_inspection"
                   />
-                  {(formData.automobileInspectionImage || formData.automobileInspectionExpiry) && (
+                  {(formData.automobileInspectionImageUrl || formData.automobileInspectionExpiry) && (
                     <div className="mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
                        <Label className="text-xs font-semibold text-gray-700">保険期間 (自動認識)</Label>
                        <Input 
@@ -492,12 +520,12 @@ export default function RegistrationForm() {
                 <div>
                   <ImageUpload
                     label="PL保険"
-                    onFileSelect={(file) => handleImageSelect('plInsuranceImage', file)}
-                    enableOCR={true}
-                    documentType="plInsurance"
-                    onRecognized={(data) => handleRecognized('plInsuranceExpiry', data)}
+                    value={formData.plInsuranceImageUrl}
+                    onUploadComplete={(url) => handleImageUpload('plInsuranceImageUrl', url)}
+                    userId={userProfile?.userId}
+                    documentType="pl_insurance"
                   />
-                  {(formData.plInsuranceImage || formData.plInsuranceExpiry) && (
+                  {(formData.plInsuranceImageUrl || formData.plInsuranceExpiry) && (
                     <div className="mt-2 ml-1 p-3 bg-gray-50 rounded-lg border border-gray-100">
                        <Label className="text-xs font-semibold text-gray-700">保険期間 (自動認識)</Label>
                        <Input 
@@ -510,10 +538,15 @@ export default function RegistrationForm() {
                   )}
                 </div>
 
-                <ImageUpload
-                  label="消防設備配置図"
-                  onFileSelect={(file) => handleImageSelect('fireEquipmentLayoutImage', file)}
-                />
+                <div>
+                  <ImageUpload
+                    label="消防署へのレイアウト提出控え"
+                    value={formData.fireEquipmentLayoutImageUrl}
+                    onUploadComplete={(url) => handleImageUpload('fireEquipmentLayoutImageUrl', url)}
+                    userId={userProfile?.userId}
+                    documentType="fire_equipment_layout"
+                  />
+                </div>
               </div>
             </div>
           )}

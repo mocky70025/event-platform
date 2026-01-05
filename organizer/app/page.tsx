@@ -48,24 +48,6 @@ export default function Home() {
       if (showLoading && !hasExistingData) {
         setLoading(true);
       }
-      // 環境変数のチェック
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://placeholder.supabase.co') {
-        console.error('環境変数が設定されていません:', {
-          url: supabaseUrl || '未設定',
-          key: supabaseAnonKey ? '設定済み' : '未設定'
-        });
-        setAuthError({
-          title: '環境変数エラー',
-          message: '環境変数が設定されていません。Vercelの設定を確認してください。'
-        });
-        if (showLoading && !hasExistingData) {
-          setLoading(false);
-        }
-        return;
-      }
       
       // セッションを確認
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -78,9 +60,7 @@ export default function Home() {
         }
         setUser(null);
         setOrganizer(null);
-        if (showLoading && !hasExistingData) {
-          setLoading(false);
-        }
+        setLoading(false);
         return;
       }
       
@@ -91,9 +71,7 @@ export default function Home() {
         }
         setUser(null);
         setOrganizer(null);
-        if (showLoading && !hasExistingData) {
-          setLoading(false);
-        }
+        setLoading(false);
         return;
       }
 
@@ -106,17 +84,13 @@ export default function Home() {
         }
         setUser(null);
         setOrganizer(null);
-        if (showLoading && !hasExistingData) {
-          setLoading(false);
-        }
+        setLoading(false);
         return;
       }
 
       // 既に同じユーザー情報が存在する場合は、データベースクエリをスキップ
       if (hasExistingData && userRef.current.id === currentUser.id) {
-        if (showLoading && !hasExistingData) {
-          setLoading(false);
-        }
+        setLoading(false);
         return;
       }
 
@@ -154,7 +128,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setLoading, setUser, setOrganizer]);
 
   // checkAuthをrefに保存
   useEffect(() => {

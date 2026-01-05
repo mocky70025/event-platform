@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { Card, CardContent } from '../../components/ui/card';
@@ -9,12 +9,13 @@ import { Button } from '../../components/ui/button';
 import { AlertCircle } from 'lucide-react';
 
 function AuthCallbackContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [error, setError] = useState('');
 
   useEffect(() => {
     const handleCallback = async () => {
+      // window.location.searchを直接使用してパラメータを取得
+      const searchParams = new URLSearchParams(window.location.search);
       const code = searchParams.get('code');
       const errorParam = searchParams.get('error');
 
@@ -109,9 +110,6 @@ function AuthCallbackContent() {
 }
 
 export default function AuthCallback() {
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <AuthCallbackContent />
-    </Suspense>
-  );
+  // useSearchParamsを使わないため、Suspenseは不要
+  return <AuthCallbackContent />;
 }

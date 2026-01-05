@@ -39,6 +39,11 @@ export default function AuthCallback() {
             return;
           }
           
+          // 認証成功後、authCompletedフラグをsessionStorageに保存
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('authCompleted', 'true');
+          }
+          
           // 認証成功後、codeパラメータなしでトップページにリダイレクト
           // メインページのonAuthStateChangeでauthCompletedフラグが設定される
           router.push('/');
@@ -52,6 +57,10 @@ export default function AuthCallback() {
         // セッションが既に確立されている場合
         supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_IN' && session) {
+            // 認証成功後、authCompletedフラグをsessionStorageに保存
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('authCompleted', 'true');
+            }
             // 認証完了後、codeパラメータなしでトップページにリダイレクト
             router.push('/');
           } else if (event === 'SIGNED_OUT') {

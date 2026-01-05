@@ -134,6 +134,8 @@ export default function VerifyEmailPage() {
       sessionStorage.setItem('user_id', session.user.id);
       sessionStorage.setItem('user_email', session.user.email || '');
       sessionStorage.removeItem('pending_email');
+      // 認証成功後、authCompletedフラグをsessionStorageに保存
+      sessionStorage.setItem('authCompleted', 'true');
 
       const { data } = await supabase
         .from('exhibitors')

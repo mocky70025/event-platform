@@ -26,7 +26,13 @@ export default function Home() {
   const processingRef = useRef(false);
   const checkingAuthRef = useRef(false); // checkAuthの重複実行防止用
   const [debugInfo, setDebugInfo] = useState<string>(''); // デバッグ情報
-  const [authCompleted, setAuthCompleted] = useState(false); // 認証完了フラグ（メール/Google/LINE）
+  // 認証完了フラグ（メール/Google/LINE）をsessionStorageから読み込む
+  const [authCompleted, setAuthCompleted] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('authCompleted') === 'true';
+    }
+    return false;
+  });
   
   // 未読通知数を取得するフックをここに移動
   const [unreadCount, setUnreadCount] = useState(0);
@@ -108,7 +114,11 @@ export default function Home() {
                });
             } else {
                setDebugInfo(prev => prev + '\nCode exchange successful');
-               setAuthCompleted(true); // 認証完了をマーク（Google/LINE認証含む）
+               // 認証完了をマーク（Google/LINE認証含む）
+               setAuthCompleted(true);
+               if (typeof window !== 'undefined') {
+                 sessionStorage.setItem('authCompleted', 'true');
+               }
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
                await checkAuth();
@@ -141,7 +151,11 @@ export default function Home() {
                });
              } else {
                setDebugInfo(prev => prev + '\nSession set manually from hash');
-               setAuthCompleted(true); // 認証完了をマーク
+               // 認証完了をマーク
+               setAuthCompleted(true);
+               if (typeof window !== 'undefined') {
+                 sessionStorage.setItem('authCompleted', 'true');
+               }
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
                await checkAuth();
@@ -174,7 +188,11 @@ export default function Home() {
               });
             } else {
               setDebugInfo(prev => prev + '\nOTP verification successful');
-              setAuthCompleted(true); // 認証完了をマーク
+              // 認証完了をマーク
+              setAuthCompleted(true);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
+              }
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
@@ -229,11 +247,18 @@ export default function Home() {
         if (event === 'SIGNED_OUT' || !session) {
           setUser(null);
           setExhibitor(null);
-          setAuthCompleted(false); // ログアウト時はフラグをリセット
+          // ログアウト時はフラグをリセット
+          setAuthCompleted(false);
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('authCompleted');
+          }
         } else if (event === 'SIGNED_IN' && session) {
           // 認証完了をマーク（Google/LINE認証の場合）
           // 既存ユーザーでも新規ユーザーでも、認証完了後はメインUIを表示
           setAuthCompleted(true);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('authCompleted', 'true');
+          }
           // checkAuth()を実行してuserとexhibitorの状態を更新
           await checkAuth();
         }
@@ -412,12 +437,16 @@ export default function Home() {
     // ユーザーは認証済みだが、出店者情報が未登録の場合
     // 認証完了直後（メール/Google/LINE）はイベント一覧を表示（登録はプロフィール画面から可能）
     // それ以外の場合は登録フォームを表示
+    // authCompletedがtrueの場合は、メインUIを表示（登録はプロフィール画面から可能）
     if (user && !exhibitor && !authCompleted) {
       return (
         <div className="min-h-screen bg-sky-50">
           <RegistrationForm 
             onRegistrationComplete={() => {
               setAuthCompleted(true);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
+              }
               checkAuth();
             }}
           />

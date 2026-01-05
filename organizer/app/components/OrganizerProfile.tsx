@@ -80,7 +80,11 @@ export default function OrganizerProfile() {
               情報を登録してイベントを作成しましょう
             </p>
             <Button
-              onClick={() => router.push('/register')}
+              onClick={() => {
+                // 登録フォームを表示するために、stateを更新してメインページに戻る
+                // メインページで登録フォームが表示される
+                router.push('/');
+              }}
               className="h-10 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg px-6 transition-colors"
             >
               情報を登録する

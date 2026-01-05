@@ -20,7 +20,13 @@ export default function Home() {
   const [organizer, setOrganizer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('events');
-  const [authCompleted, setAuthCompleted] = useState(false); // 認証完了フラグ
+  // 認証完了フラグ（メール/Google/LINE）をsessionStorageから読み込む
+  const [authCompleted, setAuthCompleted] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('authCompleted') === 'true';
+    }
+    return false;
+  });
   const processingRef = useRef(false);
 
   useEffect(() => {
@@ -49,7 +55,11 @@ export default function Home() {
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             
             if (!error) {
-              setAuthCompleted(true); // 認証完了をマーク
+              // 認証完了をマーク
+              setAuthCompleted(true);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
+              }
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
@@ -73,7 +83,11 @@ export default function Home() {
             });
 
             if (!error) {
-              setAuthCompleted(true); // 認証完了をマーク
+              // 認証完了をマーク
+              setAuthCompleted(true);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
+              }
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
@@ -97,7 +111,11 @@ export default function Home() {
             });
             
             if (!error) {
-              setAuthCompleted(true); // 認証完了をマーク
+              // 認証完了をマーク
+              setAuthCompleted(true);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
+              }
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
@@ -149,10 +167,14 @@ export default function Home() {
           }
           setUser(null);
           setOrganizer(null);
-          setAuthCompleted(false); // ログアウト時はフラグをリセット
+          // ログアウト時はフラグをリセット
+          setAuthCompleted(false);
         } else if (event === 'SIGNED_IN' && session) {
           // 認証完了をマーク（Google/LINE認証の場合）
           setAuthCompleted(true);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('authCompleted', 'true');
+          }
           await checkAuth();
         }
       }
@@ -237,21 +259,18 @@ export default function Home() {
 
   // セッションが有効だが未登録の場合
   // 認証完了直後（メール/Google/LINE）で主催者情報がない場合は登録フォームを表示
-  if (!organizer) {
-    // 認証完了直後は登録フォームを表示
-    if (authCompleted) {
-      return (
-        <RegistrationForm 
-          onRegistrationComplete={async () => {
-            // 登録完了後、主催者情報を取得してからメインUIを表示
-            await checkAuth();
-            // checkAuth完了後、organizerが取得されているはずなので、メインUIが表示される
-          }}
-        />
-      );
-    }
-    // ローディング中または認証完了前は登録フォームを表示しない
-    // （既存ユーザーがログインした場合、organizerが存在するのでこの条件には到達しない）
+  // authCompletedがtrueの場合は、メインUIを表示（登録はプロフィール画面から可能）
+  if (!organizer && !authCompleted) {
+    // 認証完了前で主催者情報がない場合は登録フォームを表示
+    return (
+      <RegistrationForm 
+        onRegistrationComplete={async () => {
+          // 登録完了後、主催者情報を取得してからメインUIを表示
+          await checkAuth();
+          // checkAuth完了後、organizerが取得されているはずなので、メインUIが表示される
+        }}
+      />
+    );
   }
 
   // セッションが有効で登録済みの場合、メイン画面を表示

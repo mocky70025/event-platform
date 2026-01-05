@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ApplicationsPage() {
+function ApplicationsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventId = searchParams.get('eventId');
@@ -13,7 +13,8 @@ export default function ApplicationsPage() {
       // eventIdがない場合はイベント一覧に戻る
       router.push('/events');
     }
-  }, [eventId, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!eventId) {
     return <div>Loading...</div>;
@@ -24,5 +25,13 @@ export default function ApplicationsPage() {
       <p>申し込み管理ページ (Event ID: {eventId})</p>
       <p>このページは実装中です</p>
     </div>
+  );
+}
+
+export default function ApplicationsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ApplicationsPageContent />
+    </Suspense>
   );
 }

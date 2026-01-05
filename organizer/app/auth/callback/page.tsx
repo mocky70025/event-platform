@@ -57,7 +57,7 @@ function AuthCallbackContent() {
         }
       } else {
         // セッションが既に確立されている場合
-        supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_IN' && session) {
             // 認証成功後、authCompletedフラグをsessionStorageに保存
             if (typeof window !== 'undefined') {
@@ -69,11 +69,16 @@ function AuthCallbackContent() {
             router.push('/');
           }
         });
+
+        return () => {
+          subscription.unsubscribe();
+        };
       }
     };
 
     handleCallback();
-  }, [searchParams, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (error) {
     return (

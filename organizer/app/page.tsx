@@ -111,7 +111,11 @@ export default function Home() {
         if (organizerError.code === 'PGRST116') {
           // 未登録の場合はnullを設定（正常な状態）
           setOrganizer(null);
-        } else if (organizerError.status === 406 || organizerError.code === 'PGRST301') {
+        } else if (
+          organizerError.code === 'PGRST301' ||
+          organizerError.message?.includes('406') ||
+          organizerError.message?.includes('Not Acceptable')
+        ) {
           // 406エラーまたはRLSポリシーエラーの場合
           console.error('RLS policy error or 406 error:', organizerError);
           // エラーを表示せず、未登録として扱う（ユーザーは登録フォームに誘導される）

@@ -13,71 +13,104 @@ function AuthCallbackContent() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let isMounted = true;
+    let subscription: { unsubscribe: () => void } | null = null;
+
     const handleCallback = async () => {
-      // window.location.searchを直接使用してパラメータを取得
-      const searchParams = new URLSearchParams(window.location.search);
-      const code = searchParams.get('code');
-      const errorParam = searchParams.get('error');
+      try {
+        // window.location.searchを直接使用してパラメータを取得
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get('code');
+        const errorParam = searchParams.get('error');
 
-      if (errorParam) {
-        setError('認証に失敗しました');
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
-        return;
-      }
-
-      if (code) {
-        try {
-          // codeを処理してセッションを確立
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          
-          if (exchangeError) {
-            console.error('Exchange code error:', exchangeError);
-            setError('認証処理に失敗しました: ' + exchangeError.message);
+        if (errorParam) {
+          if (isMounted) {
+            setError('認証に失敗しました');
             setTimeout(() => {
-              router.push('/');
-            }, 3000);
-            return;
+              if (isMounted) {
+                router.push('/');
+              }
+            }, 2000);
           }
-          
-          // 認証成功後、authCompletedフラグをsessionStorageに保存
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('authCompleted', 'true');
-          }
-          
-          // 認証成功後、codeパラメータなしでトップページにリダイレクト
-          // メインページのonAuthStateChangeでauthCompletedフラグが設定される
-          router.push('/');
-        } catch (err: any) {
-          console.error('Auth callback error:', err);
-          setError(err.message || '認証処理に失敗しました');
-          setTimeout(() => {
-            router.push('/');
-          }, 3000);
+          return;
         }
-      } else {
-        // セッションが既に確立されている場合
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' && session) {
+
+        if (code) {
+          try {
+            // codeを処理してセッションを確立
+            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+            
+            if (exchangeError) {
+              console.error('Exchange code error:', exchangeError);
+              if (isMounted) {
+                setError('認証処理に失敗しました: ' + exchangeError.message);
+                setTimeout(() => {
+                  if (isMounted) {
+                    router.push('/');
+                  }
+                }, 3000);
+              }
+              return;
+            }
+            
             // 認証成功後、authCompletedフラグをsessionStorageに保存
             if (typeof window !== 'undefined') {
               sessionStorage.setItem('authCompleted', 'true');
             }
-            // 認証完了後、codeパラメータなしでトップページにリダイレクト
-            router.push('/');
-          } else if (event === 'SIGNED_OUT') {
-            router.push('/');
+            
+            // 認証成功後、codeパラメータなしでトップページにリダイレクト
+            if (isMounted) {
+              router.push('/');
+            }
+          } catch (err: any) {
+            console.error('Auth callback error:', err);
+            if (isMounted) {
+              setError(err.message || '認証処理に失敗しました');
+              setTimeout(() => {
+                if (isMounted) {
+                  router.push('/');
+                }
+              }, 3000);
+            }
           }
-        });
+        } else {
+          // セッションが既に確立されている場合
+          subscription = supabase.auth.onAuthStateChange((event, session) => {
+            if (!isMounted) return;
 
-        return () => {
-          subscription.unsubscribe();
-        };
+            if (event === 'SIGNED_IN' && session) {
+              // 認証成功後、authCompletedフラグをsessionStorageに保存
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
+              }
+              // 認証完了後、codeパラメータなしでトップページにリダイレクト
+              router.push('/');
+            } else if (event === 'SIGNED_OUT') {
+              router.push('/');
+            }
+          });
+        }
+      } catch (err: any) {
+        console.error('Callback handler error:', err);
+        if (isMounted) {
+          setError('認証処理中にエラーが発生しました');
+          setTimeout(() => {
+            if (isMounted) {
+              router.push('/');
+            }
+          }, 3000);
+        }
       }
     };
 
     handleCallback();
+
+    return () => {
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

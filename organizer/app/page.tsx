@@ -10,8 +10,9 @@ import OrganizerProfile from './components/OrganizerProfile';
 import NotificationBox from './components/NotificationBox';
 import EventApplications from './components/EventApplications';
 import LoadingSpinner from './components/LoadingSpinner';
-import { Bell, Calendar, User } from 'lucide-react';
+import { Bell, Calendar, User, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 type View = 'events' | 'profile' | 'notifications' | 'applications';
 
@@ -20,7 +21,7 @@ export default function Home() {
   const [organizer, setOrganizer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('events');
-  const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<{title: string, message: string} | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   // 認証完了フラグ（メール/Google/LINE）をsessionStorageから読み込む
   const [authCompleted, setAuthCompleted] = useState(() => {
@@ -30,7 +31,6 @@ export default function Home() {
     return false;
   });
   const processingRef = useRef(false);
-  const initializedRef = useRef(false);
   const userRef = useRef<any>(null);
   const organizerRef = useRef<any>(null);
   const checkAuthRef = useRef<((showLoading?: boolean) => Promise<void>) | null>(null);
@@ -48,8 +48,6 @@ export default function Home() {
       if (showLoading && !hasExistingData) {
         setLoading(true);
       }
-      setError(null);
-      
       // 環境変数のチェック
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -59,7 +57,10 @@ export default function Home() {
           url: supabaseUrl || '未設定',
           key: supabaseAnonKey ? '設定済み' : '未設定'
         });
-        setError('環境変数が設定されていません。Vercelの設定を確認してください。');
+        setAuthError({
+          title: '環境変数エラー',
+          message: '環境変数が設定されていません。Vercelの設定を確認してください。'
+        });
         if (showLoading && !hasExistingData) {
           setLoading(false);
         }
@@ -163,39 +164,8 @@ export default function Home() {
   }, [checkAuth]);
 
   useEffect(() => {
-    // グローバルエラーハンドラー: リフレッシュトークンエラーのみをキャッチ
-    const handleGlobalError = (event: ErrorEvent) => {
-      // リフレッシュトークンエラーのみを検出（認証コールバック処理中のエラーは除外）
-      const errorMessage = event.error?.message || '';
-      const isRefreshTokenError = 
-        errorMessage.includes('Invalid Refresh Token') ||
-        errorMessage.includes('Refresh Token Not Found') ||
-        (errorMessage.includes('refresh_token') && errorMessage.includes('Not Found'));
-      
-      // 認証コールバック処理中はスキップ（/auth/callbackページで処理）
-      const isCallbackPage = typeof window !== 'undefined' && window.location.pathname === '/auth/callback';
-      
-      if (isRefreshTokenError && !isCallbackPage) {
-        // エラーをコンソールに表示しない（自動的に処理される）
-        event.preventDefault();
-        // ストレージをクリア
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('supabase.auth.token');
-          sessionStorage.clear();
-        }
-        // ログアウト状態にする
-        setUser(null);
-        setOrganizer(null);
-        setAuthCompleted(false);
-        setLoading(false);
-      }
-    };
-
-    // エラーハンドラーを登録
-    window.addEventListener('error', handleGlobalError);
-
-    // メールリンクのハッシュ処理
-    const processHashToken = async (): Promise<boolean> => {
+    // メールリンクのハッシュ処理と認証状態監視
+    const processHashToken = async () => {
       try {
         if (typeof window !== 'undefined') {
           const hashString = window.location.hash.substring(1);
@@ -204,99 +174,82 @@ export default function Home() {
           
           // エラーチェック
           const error = hashParams.get('error') || searchParams.get('error');
+          const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
           if (error) {
-            console.error('Auth error:', error);
-            setError('認証エラーが発生しました: ' + error);
-            setLoading(false);
-            return false; // 処理完了（エラー）
+            console.error('Auth error:', error, errorDescription);
+            setAuthError({
+              title: '認証エラー',
+              message: errorDescription?.replace(/\+/g, ' ') || '認証リンクが無効か期限切れです。'
+            });
+            window.history.replaceState(null, '', window.location.pathname);
+            return;
           }
 
           // PKCEフロー (code) の処理
-          // メインページで直接処理（storeアプリと同じ方式）
           const code = searchParams.get('code');
           if (code) {
-            if (processingRef.current) return false;
+            if (processingRef.current) return;
             processingRef.current = true;
             setLoading(true);
             
-            try {
-              const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-              
-              if (exchangeError) {
-                console.error('Exchange code error:', exchangeError);
-                setError('認証処理に失敗しました: ' + exchangeError.message);
-                setLoading(false);
-              } else {
-                // 認証完了をマーク（Google/LINE認証含む）
-                setAuthCompleted(true);
-                if (typeof window !== 'undefined') {
-                  sessionStorage.setItem('authCompleted', 'true');
-                }
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, document.title, newUrl);
-                try {
-                  if (checkAuthRef.current) {
-                    await checkAuthRef.current(true);
-                  }
-                } catch (err) {
-                  console.error('Error in checkAuth from processHashToken (code):', err);
-                  // エラーが発生しても処理を続行
-                }
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            
+            if (error) {
+              console.error('Exchange code error:', error);
+              setAuthError({
+                title: '認証失敗',
+                message: error.message || '認証コードの交換に失敗しました。'
+              });
+            } else {
+              // 認証完了をマーク（Google/LINE認証含む）
+              setAuthCompleted(true);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
               }
-            } catch (err: any) {
-              console.error('Error exchanging code:', err);
-              setError('認証処理に失敗しました: ' + (err.message || '不明なエラー'));
-              setLoading(false);
-            } finally {
-              processingRef.current = false;
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+              if (checkAuthRef.current) {
+                await checkAuthRef.current(true);
+              }
             }
-            return true; // 処理完了（認証処理中）
+            processingRef.current = false;
+            return;
           }
 
-          // Implicitフロー (access_token) の処理
+          // Implicitフロー (access_token) の直接処理
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
           
           if (accessToken) {
-            if (processingRef.current) return false;
+            if (processingRef.current) return;
             processingRef.current = true;
             setLoading(true);
 
-            try {
-              const { error: sessionError } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken || '',
-              });
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
 
-              if (!sessionError) {
-                // 認証完了をマーク
-                setAuthCompleted(true);
-                if (typeof window !== 'undefined') {
-                  sessionStorage.setItem('authCompleted', 'true');
-                }
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, document.title, newUrl);
-                try {
-                  if (checkAuthRef.current) {
-                    await checkAuthRef.current(true);
-                  }
-                } catch (err) {
-                  console.error('Error in checkAuth from processHashToken (access_token):', err);
-                  // エラーが発生しても処理を続行
-                }
-              } else {
-                console.error('Session error:', sessionError);
-                setError('セッションの設定に失敗しました: ' + sessionError.message);
-                setLoading(false);
+            if (error) {
+              console.error('Set session error:', error);
+              setAuthError({
+                title: '認証エラー',
+                message: 'セッションの確立に失敗しました。'
+              });
+            } else {
+              // 認証完了をマーク
+              setAuthCompleted(true);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
               }
-            } catch (sessionErr: any) {
-              console.error('Error setting session:', sessionErr);
-              setError('認証処理に失敗しました: ' + (sessionErr.message || '不明なエラー'));
-              setLoading(false);
-              } finally {
-              processingRef.current = false;
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+              if (checkAuthRef.current) {
+                await checkAuthRef.current(true);
+              }
             }
-            return true; // 処理完了（認証処理中）
+            processingRef.current = false;
+            return;
           }
 
           // Implicitフロー (token_hash) の処理
@@ -304,54 +257,43 @@ export default function Home() {
           const type = hashParams.get('type');
           
           if (th && (type === 'signup' || type === 'magiclink' || type === 'recovery' || !type)) {
-            if (processingRef.current) return false;
+            if (processingRef.current) return;
             processingRef.current = true;
             setLoading(true);
             
-            try {
-              const { error: otpError } = await supabase.auth.verifyOtp({ 
-                token_hash: th, 
-                type: (type as any) || 'signup'
+            const { error } = await supabase.auth.verifyOtp({ 
+              token_hash: th, 
+              type: (type as any) || 'signup'
+            });
+            
+            if (error) {
+              console.error('Verify OTP error:', error);
+              setAuthError({
+                title: '認証失敗',
+                message: error.message || '認証に失敗しました。リンクが期限切れの可能性があります。'
               });
-              
-              if (!otpError) {
-                // 認証完了をマーク
-                setAuthCompleted(true);
-                if (typeof window !== 'undefined') {
-                  sessionStorage.setItem('authCompleted', 'true');
-                }
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, document.title, newUrl);
-                try {
-                  if (checkAuthRef.current) {
-                    await checkAuthRef.current(true);
-                  }
-                } catch (err) {
-                  console.error('Error in checkAuth from processHashToken (token_hash):', err);
-                  // エラーが発生しても処理を続行
-                }
-              } else {
-                console.error('OTP verification error:', otpError);
-                setError('認証コードの検証に失敗しました: ' + otpError.message);
-                setLoading(false);
+            } else {
+              // 認証完了をマーク
+              setAuthCompleted(true);
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('authCompleted', 'true');
               }
-            } catch (otpErr: any) {
-              console.error('Error verifying OTP:', otpErr);
-              setError('認証処理に失敗しました: ' + (otpErr.message || '不明なエラー'));
-              setLoading(false);
-            } finally {
-              processingRef.current = false;
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+              if (checkAuthRef.current) {
+                await checkAuthRef.current(true);
+              }
             }
-            return true; // 処理完了（認証処理中）
+            processingRef.current = false;
           }
         }
-        return true; // URLパラメータなし（通常の初期化）
       } catch (err: any) {
         console.error('Error processing hash token:', err);
-        setError('認証処理中にエラーが発生しました: ' + (err.message || '不明なエラー'));
+        setAuthError({
+          title: 'システムエラー',
+          message: '予期せぬエラーが発生しました。'
+        });
         processingRef.current = false;
-        setLoading(false);
-        return false; // エラー発生
       }
     };
 
@@ -411,93 +353,69 @@ export default function Home() {
       }
     );
 
-    // タイムアウト処理（10秒後にローディングを解除）
-    const timeoutId = setTimeout(() => {
-      if (!initializedRef.current) {
-        console.error('認証チェックがタイムアウトしました');
-        setError('接続に時間がかかっています。ページをリロードしてください。');
-        setLoading(false);
-        initializedRef.current = true; // タイムアウトしたことを記録
-      }
-    }, 10000);
-
     // まずprocessHashTokenを実行（URLパラメータの処理）
-    const initializeAuth = async () => {
-      try {
-        const processed = await processHashToken();
+    processHashToken();
+    
+    // 初期認証チェック（URLパラメータがない場合）
+    // processHashTokenでcodeが処理されない場合のみ実行
+    const checkInitialAuth = async () => {
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hasCode = searchParams.get('code') || hashParams.get('access_token') || hashParams.get('token_hash');
         
-        // processHashTokenがfalseを返した場合（エラーまたはリダイレクト）は処理を終了
-        if (!processed) {
-          initializedRef.current = true;
-          clearTimeout(timeoutId);
-          return;
-        }
-        
-        // 初期認証チェック（URLパラメータがない場合、または処理が完了した場合）
-        if (!processingRef.current) {
-          try {
-            if (checkAuthRef.current) {
-              await checkAuthRef.current(true);
-            }
-          } catch (err) {
-            console.error('Error in checkAuth from initializeAuth:', err);
-            // エラーが発生しても処理を続行
+        // URLパラメータがない場合のみ初期認証チェックを実行
+        if (!hasCode) {
+          if (checkAuthRef.current) {
+            await checkAuthRef.current(true);
           }
         }
-        
-        initializedRef.current = true;
-        clearTimeout(timeoutId);
-      } catch (err: any) {
-        console.error('Error initializing auth:', err);
-        setError(err.message || '認証の初期化に失敗しました');
-        setLoading(false);
-        initializedRef.current = true;
-        clearTimeout(timeoutId);
       }
     };
     
-    initializeAuth();
+    // 少し待ってから初期認証チェックを実行（processHashTokenの完了を待つ）
+    setTimeout(() => {
+      checkInitialAuth();
+    }, 500);
 
     // クリーンアップ関数（1つだけ）
     return () => {
-      clearTimeout(timeoutId);
       subscription.unsubscribe();
-      window.removeEventListener('error', handleGlobalError);
     };
   }, []);
 
-  if (loading) {
+  // 認証エラー時の表示
+  if (authError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50 p-4">
-        <LoadingSpinner />
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg max-w-md">
-            <p className="text-sm text-red-800">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-2 text-sm text-red-600 underline"
-            >
-              ページをリロード
-            </button>
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-red-100 max-w-md w-full text-center">
+          <div className="flex justify-center mb-4">
+            <div className="h-16 w-16 bg-red-50 rounded-full flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+            </div>
           </div>
-        )}
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{authError.title}</h2>
+          <p className="text-gray-600 mb-6">{authError.message}</p>
+          <Button 
+            onClick={() => {
+              setAuthError(null);
+              setLoading(true);
+              // URLのハッシュやクエリパラメータをクリアしてリロード
+              window.location.href = window.location.origin;
+            }}
+            className="bg-orange-500 hover:bg-orange-600 text-white w-full"
+          >
+            トップページへ戻る
+          </Button>
+        </div>
       </div>
     );
   }
 
-  if (error && !user) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50 p-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-red-200 max-w-md">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">エラーが発生しました</h2>
-          <p className="text-sm text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg"
-          >
-            ページをリロード
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-orange-50">
+        <LoadingSpinner />
       </div>
     );
   }

@@ -324,7 +324,16 @@ export default function Home() {
       }
 
       setExhibitor(exhibitorData || null);
-      setDebugInfo(prev => prev + '\nAuth check complete. Exhibitor: ' + (exhibitorData ? 'Found' : 'Not found'));
+      
+      // authCompletedフラグをsessionStorageから再読み込み（認証完了後の状態を反映）
+      if (typeof window !== 'undefined') {
+        const authCompletedFlag = sessionStorage.getItem('authCompleted') === 'true';
+        if (authCompletedFlag !== authCompleted) {
+          setAuthCompleted(authCompletedFlag);
+        }
+      }
+      
+      setDebugInfo(prev => prev + '\nAuth check complete. Exhibitor: ' + (exhibitorData ? 'Found' : 'Not found') + ', AuthCompleted: ' + (typeof window !== 'undefined' ? sessionStorage.getItem('authCompleted') : 'false'));
     } catch (error: any) {
       console.error('Error checking auth:', error);
       setDebugInfo(prev => prev + '\nAuth check exception: ' + error.message);

@@ -25,7 +25,6 @@ export default function Home() {
   const [authError, setAuthError] = useState<{title: string, message: string} | null>(null);
   const processingRef = useRef(false);
   const checkingAuthRef = useRef(false); // checkAuthの重複実行防止用
-  const [debugInfo, setDebugInfo] = useState<string>(''); // デバッグ情報
   // 認証完了フラグ（メール/Google/LINE）をsessionStorageから読み込む
   const [authCompleted, setAuthCompleted] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -75,18 +74,12 @@ export default function Home() {
           const hashParams = new URLSearchParams(hashString);
           const searchParams = new URLSearchParams(window.location.search);
           
-          const debugMsg = `Hash: ${window.location.hash}, Search: ${window.location.search}`;
-          console.log(debugMsg);
-          setDebugInfo(prev => prev + '\n' + debugMsg);
-          
           // エラーチェック
           const error = hashParams.get('error') || searchParams.get('error');
           const errorDescription = hashParams.get('error_description') || searchParams.get('error_description');
 
           if (error) {
-            const errorMsg = `Auth error: ${error} - ${errorDescription}`;
-            console.error(errorMsg);
-            setDebugInfo(prev => prev + '\n' + errorMsg);
+            console.error('Auth error:', error, errorDescription);
             setAuthError({
               title: '認証エラー',
               message: errorDescription?.replace(/\+/g, ' ') || '認証リンクが無効か期限切れです。'
@@ -102,18 +95,15 @@ export default function Home() {
             processingRef.current = true;
             setLoading(true);
             
-            setDebugInfo(prev => prev + '\nExchanging code...');
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             
             if (error) {
                console.error('Exchange code error:', error);
-               setDebugInfo(prev => prev + '\nExchange code error: ' + error.message);
                setAuthError({
                  title: '認証失敗',
                  message: error.message || '認証コードの交換に失敗しました。'
                });
             } else {
-               setDebugInfo(prev => prev + '\nCode exchange successful');
                // 認証完了をマーク（Google/LINE認証含む）
                setAuthCompleted(true);
                if (typeof window !== 'undefined') {
@@ -135,7 +125,6 @@ export default function Home() {
              if (processingRef.current) return;
              processingRef.current = true;
              setLoading(true);
-             setDebugInfo(prev => prev + '\nFound access_token in hash');
 
              const { error } = await supabase.auth.setSession({
                access_token: accessToken,
@@ -144,13 +133,11 @@ export default function Home() {
 
              if (error) {
                console.error('Set session error:', error);
-               setDebugInfo(prev => prev + '\nError setting session: ' + error.message);
                setAuthError({
                  title: '認証エラー',
                  message: 'セッションの確立に失敗しました。'
                });
              } else {
-               setDebugInfo(prev => prev + '\nSession set manually from hash');
                // 認証完了をマーク
                setAuthCompleted(true);
                if (typeof window !== 'undefined') {
@@ -173,7 +160,6 @@ export default function Home() {
             processingRef.current = true;
             setLoading(true);
             
-            setDebugInfo(prev => prev + `\nVerifying OTP: ${type}`);
             const { error } = await supabase.auth.verifyOtp({ 
               token_hash: th, 
               type: (type as any) || 'signup'
@@ -181,13 +167,11 @@ export default function Home() {
             
             if (error) {
               console.error('Verify OTP error:', error);
-              setDebugInfo(prev => prev + '\nVerify OTP error: ' + error.message);
               setAuthError({
                 title: '認証失敗',
                 message: error.message || '認証に失敗しました。リンクが期限切れの可能性があります。'
               });
             } else {
-              setDebugInfo(prev => prev + '\nOTP verification successful');
               // 認証完了をマーク
               setAuthCompleted(true);
               if (typeof window !== 'undefined') {
@@ -202,7 +186,6 @@ export default function Home() {
         }
       } catch (err: any) {
         console.error('Error processing hash token:', err);
-        setDebugInfo(prev => prev + '\nSystem error: ' + err.message);
         setAuthError({
           title: 'システムエラー',
           message: '予期せぬエラーが発生しました。'
@@ -236,11 +219,8 @@ export default function Home() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setDebugInfo(prev => prev + `\nAuth state change: ${event}`);
-        
         // トークン処理中はイベントによるチェックをスキップする（競合防止）
         if (processingRef.current) {
-          setDebugInfo(prev => prev + ' (Skipped due to processing)');
           return;
         }
 
@@ -274,20 +254,16 @@ export default function Home() {
     try {
       // 重複実行防止
       if (checkingAuthRef.current) {
-        setDebugInfo(prev => prev + '\nCheck auth skipped (already running)');
         return;
       }
       checkingAuthRef.current = true;
       
       setLoading(true);
       
-      setDebugInfo(prev => prev + '\nChecking auth...');
-      
       // セッションを確認
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
-        setDebugInfo(prev => prev + '\nNo session found');
         setUser(null);
         setExhibitor(null);
         setLoading(false);
@@ -295,12 +271,9 @@ export default function Home() {
         return;
       }
 
-      setDebugInfo(prev => prev + '\nSession found: ' + session.user.id);
-
       // ユーザー情報を取得
       const currentUser = await getCurrentUser();
       if (!currentUser) {
-        setDebugInfo(prev => prev + '\nUser fetch failed');
         setUser(null);
         setExhibitor(null);
         setLoading(false);
@@ -320,7 +293,6 @@ export default function Home() {
 
       if (exhibitorError) {
         console.error('Error checking exhibitor:', exhibitorError);
-        setDebugInfo(prev => prev + '\nExhibitor check error: ' + exhibitorError.message);
       }
 
       setExhibitor(exhibitorData || null);
@@ -332,11 +304,8 @@ export default function Home() {
           setAuthCompleted(authCompletedFlag);
         }
       }
-      
-      setDebugInfo(prev => prev + '\nAuth check complete. Exhibitor: ' + (exhibitorData ? 'Found' : 'Not found') + ', AuthCompleted: ' + (typeof window !== 'undefined' ? sessionStorage.getItem('authCompleted') : 'false'));
     } catch (error: any) {
       console.error('Error checking auth:', error);
-      setDebugInfo(prev => prev + '\nAuth check exception: ' + error.message);
       setUser(null);
       setExhibitor(null);
     } finally {
@@ -374,9 +343,6 @@ export default function Home() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">{authError.title}</h2>
           <p className="text-gray-600 mb-6">{authError.message}</p>
-          <pre className="text-xs text-left bg-gray-100 p-2 rounded mb-4 overflow-auto max-h-32">
-            {debugInfo}
-          </pre>
           <Button 
             onClick={() => {
               setAuthError(null);
@@ -395,12 +361,8 @@ export default function Home() {
 
   if (loading && !DEV_MODE) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50">
+      <div className="min-h-screen flex items-center justify-center bg-sky-50">
         <LoadingSpinner />
-        <p className="mt-4 text-xs text-gray-400">Loading... (Debug)</p>
-        <pre className="mt-2 text-[10px] text-gray-400 max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
-            {debugInfo.split('\n').slice(-1)[0]}
-        </pre>
       </div>
     );
   }
@@ -411,9 +373,8 @@ export default function Home() {
     const search = window.location.search;
     if (hash.includes('token_hash') || hash.includes('access_token') || search.includes('code=')) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50">
+        <div className="min-h-screen flex items-center justify-center bg-sky-50">
           <LoadingSpinner />
-          <p className="mt-4 text-xs text-gray-400">Processing Token... (Debug)</p>
         </div>
       );
     }
@@ -432,15 +393,7 @@ export default function Home() {
 
     // セッションが無効な場合、WelcomeScreenを表示
     if (!user) {
-      return (
-        <div className="relative">
-            <div className="absolute top-0 left-0 right-0 z-50 bg-black/80 text-white text-[10px] p-2 max-h-32 overflow-auto pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
-                DEBUG INFO:<br/>
-                {debugInfo.split('\n').map((line, i) => <div key={i}>{line}</div>)}
-            </div>
-            <WelcomeScreen />
-        </div>
-      );
+      return <WelcomeScreen />;
     }
 
     // ユーザーは認証済みだが、出店者情報が未登録の場合

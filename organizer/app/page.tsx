@@ -56,25 +56,18 @@ export default function Home() {
       
       if (sessionError) {
         console.error('Session error:', sessionError);
-        setError('セッションの取得に失敗しました: ' + sessionError.message);
+        // エラーを表示せず、ログアウト状態にする
+        if (typeof window !== 'undefined') {
+          sessionStorage.clear();
+        }
+        setUser(null);
+        setOrganizer(null);
+        setLoading(false);
+        return;
       }
       
-      if (sessionError || !session) {
-        // リフレッシュトークンエラーの場合、特別な処理
-        if (sessionError?.message?.includes('Refresh Token') || sessionError?.message?.includes('refresh_token')) {
-          // リフレッシュトークンが無効な場合、ストレージを完全にクリア
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('supabase.auth.token');
-            sessionStorage.clear();
-          }
-          // エラーを表示せず、ログアウト状態にする（正常な動作）
-          setUser(null);
-          setOrganizer(null);
-          setLoading(false);
-          return;
-        }
-        
-        // その他のセッションエラーの場合
+      if (!session) {
+        // セッションがない場合
         if (typeof window !== 'undefined') {
           sessionStorage.clear();
         }
@@ -99,40 +92,30 @@ export default function Home() {
 
       setUser(currentUser);
 
-      // 主催者情報を確認
-      const { data: organizerData, error: organizerError } = await supabase
-        .from('organizers')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
+      // 主催者情報を確認（406エラーを無視）
+      try {
+        const { data: organizerData, error: organizerError } = await supabase
+          .from('organizers')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .single();
 
-      if (organizerError) {
-        // PGRST116は「行が見つからない」エラーなので、未登録を意味する（正常）
-        if (organizerError.code === 'PGRST116') {
-          // 未登録の場合はnullを設定（正常な状態）
-          setOrganizer(null);
-        } else if (
-          organizerError.code === 'PGRST301' ||
-          organizerError.message?.includes('406') ||
-          organizerError.message?.includes('Not Acceptable')
-        ) {
-          // 406エラーまたはRLSポリシーエラーの場合
-          console.error('RLS policy error or 406 error:', organizerError);
-          // エラーを表示せず、未登録として扱う（ユーザーは登録フォームに誘導される）
+        if (organizerError) {
+          // すべてのエラー（406エラー含む）を未登録として扱う
+          // エラーを表示せず、ユーザーを登録フォームに誘導
+          console.warn('Organizer query error (treated as not registered):', organizerError.code);
           setOrganizer(null);
         } else {
-          // その他のエラー
-          console.error('Error checking organizer:', organizerError);
-          // データベース接続エラーの可能性がある場合はエラーを表示
-          setError('主催者情報の取得に失敗しました: ' + organizerError.message);
+          setOrganizer(organizerData || null);
         }
-      } else {
-        setOrganizer(organizerData || null);
+      } catch (queryError: any) {
+        // ネットワークエラーやその他の例外も未登録として扱う
+        console.warn('Organizer query exception (treated as not registered):', queryError);
+        setOrganizer(null);
       }
     } catch (error: any) {
       console.error('Error checking auth:', error);
-      setError(error.message || '認証チェックに失敗しました');
-      // エラーが発生した場合も、sessionStorageを完全にクリア
+      // エラーを表示せず、ログアウト状態にする
       if (typeof window !== 'undefined') {
         sessionStorage.clear();
       }
@@ -193,12 +176,43 @@ export default function Home() {
           }
 
           // PKCEフロー (code) の処理
-          // auth/callbackページで処理されるため、ここではスキップ
+          // メインページで直接処理（storeアプリと同じ方式）
           const code = searchParams.get('code');
-          if (code && window.location.pathname !== '/auth/callback') {
-            // auth/callback以外のページでcodeがある場合は、auth/callbackにリダイレクト
-            window.location.href = `/auth/callback?code=${code}`;
-            return false; // リダイレクト中（処理継続不要）
+          if (code) {
+            if (processingRef.current) return false;
+            processingRef.current = true;
+            setLoading(true);
+            
+            try {
+              const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+              
+              if (exchangeError) {
+                console.error('Exchange code error:', exchangeError);
+                setError('認証処理に失敗しました: ' + exchangeError.message);
+                setLoading(false);
+              } else {
+                // 認証完了をマーク（Google/LINE認証含む）
+                setAuthCompleted(true);
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('authCompleted', 'true');
+                }
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+                try {
+                  await checkAuth();
+                } catch (err) {
+                  console.error('Error in checkAuth from processHashToken (code):', err);
+                  // エラーが発生しても処理を続行
+                }
+              }
+            } catch (err: any) {
+              console.error('Error exchanging code:', err);
+              setError('認証処理に失敗しました: ' + (err.message || '不明なエラー'));
+              setLoading(false);
+            } finally {
+              processingRef.current = false;
+            }
+            return true; // 処理完了（認証処理中）
           }
 
           // Implicitフロー (access_token) の処理
@@ -224,7 +238,12 @@ export default function Home() {
                 }
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
-                await checkAuth();
+                try {
+                  await checkAuth();
+                } catch (err) {
+                  console.error('Error in checkAuth from processHashToken (access_token):', err);
+                  // エラーが発生しても処理を続行
+                }
               } else {
                 console.error('Session error:', sessionError);
                 setError('セッションの設定に失敗しました: ' + sessionError.message);
@@ -263,7 +282,12 @@ export default function Home() {
                 }
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
-                await checkAuth();
+                try {
+                  await checkAuth();
+                } catch (err) {
+                  console.error('Error in checkAuth from processHashToken (token_hash):', err);
+                  // エラーが発生しても処理を続行
+                }
               } else {
                 console.error('OTP verification error:', otpError);
                 setError('認証コードの検証に失敗しました: ' + otpError.message);
@@ -327,7 +351,13 @@ export default function Home() {
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('authCompleted', 'true');
           }
-          await checkAuth();
+          // checkAuthを呼び出す（エラーが発生しても続行）
+          try {
+            await checkAuth();
+          } catch (err) {
+            console.error('Error in checkAuth from onAuthStateChange:', err);
+            // エラーが発生しても処理を続行
+          }
         } else if (event === 'TOKEN_REFRESHED' && session) {
           // トークンが正常にリフレッシュされた場合、何もしない（正常な動作）
           // エラーは発生していないので、そのまま続行
@@ -359,7 +389,12 @@ export default function Home() {
         
         // 初期認証チェック（URLパラメータがない場合、または処理が完了した場合）
         if (!processingRef.current) {
-          await checkAuth();
+          try {
+            await checkAuth();
+          } catch (err) {
+            console.error('Error in checkAuth from initializeAuth:', err);
+            // エラーが発生しても処理を続行
+          }
         }
         
         initializedRef.current = true;
@@ -442,29 +477,36 @@ export default function Home() {
 
   // 未読通知数を取得
   useEffect(() => {
-    if (user) {
-      const loadUnreadCount = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('notifications')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('user_type', 'organizer')
-            .eq('is_read', false);
-
-          if (!error && data) {
-            setUnreadCount(data.length);
-          }
-        } catch (err) {
-          console.error('Error loading unread count:', err);
-        }
-      };
-
-      loadUnreadCount();
-      const interval = setInterval(loadUnreadCount, 30000);
-      return () => clearInterval(interval);
+    if (!user?.id) {
+      setUnreadCount(0);
+      return;
     }
-  }, [user]);
+
+    const loadUnreadCount = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('user_type', 'organizer')
+          .eq('is_read', false);
+
+        if (!error && data) {
+          setUnreadCount(data.length);
+        } else {
+          // エラーが発生しても0に設定（エラーを表示しない）
+          setUnreadCount(0);
+        }
+      } catch (err) {
+        console.error('Error loading unread count:', err);
+        setUnreadCount(0);
+      }
+    };
+
+    loadUnreadCount();
+    const interval = setInterval(loadUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // セッションが有効で登録済みの場合、メイン画面を表示
   const renderContent = () => {

@@ -20,6 +20,7 @@ export default function Home() {
   const [organizer, setOrganizer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('events');
+  const [error, setError] = useState<string | null>(null);
   // 認証完了フラグ（メール/Google/LINE）をsessionStorageから読み込む
   const [authCompleted, setAuthCompleted] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -28,6 +29,7 @@ export default function Home() {
     return false;
   });
   const processingRef = useRef(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     // メールリンクのハッシュ処理
@@ -136,9 +138,19 @@ export default function Home() {
       }
     };
 
+    // タイムアウト処理（10秒後にローディングを解除）
+    const timeoutId = setTimeout(() => {
+      if (loading && !initializedRef.current) {
+        console.error('認証チェックがタイムアウトしました');
+        setError('接続に時間がかかっています。ページをリロードしてください。');
+        setLoading(false);
+      }
+    }, 10000);
+
     // まずprocessHashTokenを実行（URLパラメータの処理）
     const initializeAuth = async () => {
       try {
+        initializedRef.current = true;
         await processHashToken();
         
         // 初期認証チェック（URLパラメータがない場合）
@@ -153,13 +165,20 @@ export default function Home() {
             await checkAuth();
           }
         }
-      } catch (err) {
+        clearTimeout(timeoutId);
+      } catch (err: any) {
         console.error('Error initializing auth:', err);
+        setError(err.message || '認証の初期化に失敗しました');
         setLoading(false);
+        clearTimeout(timeoutId);
       }
     };
     
     initializeAuth();
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
     
     // 認証状態の変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -197,9 +216,15 @@ export default function Home() {
   const checkAuth = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // セッションを確認
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        setError('セッションの取得に失敗しました: ' + sessionError.message);
+      }
       
       if (sessionError || !session) {
         // セッションが無効な場合、sessionStorageを完全にクリア
@@ -237,11 +262,14 @@ export default function Home() {
       if (organizerError && organizerError.code !== 'PGRST116') {
         // PGRST116は「行が見つからない」エラーなので、未登録を意味する
         console.error('Error checking organizer:', organizerError);
+        // データベース接続エラーの可能性がある場合はエラーを表示
+        setError('主催者情報の取得に失敗しました: ' + organizerError.message);
       }
 
       setOrganizer(organizerData || null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error checking auth:', error);
+      setError(error.message || '認証チェックに失敗しました');
       // エラーが発生した場合も、sessionStorageを完全にクリア
       if (typeof window !== 'undefined') {
         sessionStorage.clear();
@@ -255,8 +283,36 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50 p-4">
         <LoadingSpinner />
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg max-w-md">
+            <p className="text-sm text-red-800">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 text-sm text-red-600 underline"
+            >
+              ページをリロード
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (error && !user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50 p-4">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-red-200 max-w-md">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">エラーが発生しました</h2>
+          <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg"
+          >
+            ページをリロード
+          </button>
+        </div>
       </div>
     );
   }

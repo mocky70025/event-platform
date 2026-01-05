@@ -21,6 +21,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('events');
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   // 認証完了フラグ（メール/Google/LINE）をsessionStorageから読み込む
   const [authCompleted, setAuthCompleted] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -322,25 +323,7 @@ export default function Home() {
     );
   }
 
-  // セッションが有効で登録済みの場合、メイン画面を表示
-  const renderContent = () => {
-    switch (currentView) {
-      case 'events':
-        return <EventManagement />;
-      case 'profile':
-        return <OrganizerProfile />;
-      case 'notifications':
-        return <NotificationBox />;
-      case 'applications':
-        return <div className="p-4">申し込み管理は各イベント詳細ページから利用できます。</div>;
-      default:
-        return <EventManagement />;
-    }
-  };
-
   // 未読通知数を取得
-  const [unreadCount, setUnreadCount] = useState(0);
-  
   useEffect(() => {
     if (user) {
       const loadUnreadCount = async () => {
@@ -365,6 +348,22 @@ export default function Home() {
       return () => clearInterval(interval);
     }
   }, [user]);
+
+  // セッションが有効で登録済みの場合、メイン画面を表示
+  const renderContent = () => {
+    switch (currentView) {
+      case 'events':
+        return <EventManagement />;
+      case 'profile':
+        return <OrganizerProfile />;
+      case 'notifications':
+        return <NotificationBox />;
+      case 'applications':
+        return <div className="p-4">申し込み管理は各イベント詳細ページから利用できます。</div>;
+      default:
+        return <EventManagement />;
+    }
+  };
 
   // URLパラメータでapplicationsビューを開く
   useEffect(() => {

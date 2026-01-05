@@ -123,6 +123,34 @@ export default function Home() {
       }
     };
 
+    // 認証状態の変更を監視
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // トークン処理中はイベントによるチェックをスキップする（競合防止）
+        if (processingRef.current) {
+          return;
+        }
+
+        if (event === 'SIGNED_OUT' || !session) {
+          // セッションが無効な場合、sessionStorageを完全にクリア
+          if (typeof window !== 'undefined') {
+            sessionStorage.clear();
+          }
+          setUser(null);
+          setOrganizer(null);
+          // ログアウト時はフラグをリセット
+          setAuthCompleted(false);
+        } else if (event === 'SIGNED_IN' && session) {
+          // 認証完了をマーク（Google/LINE認証の場合）
+          setAuthCompleted(true);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('authCompleted', 'true');
+          }
+          await checkAuth();
+        }
+      }
+    );
+
     // タイムアウト処理（10秒後にローディングを解除）
     const timeoutId = setTimeout(() => {
       if (loading && !initializedRef.current) {
@@ -161,39 +189,9 @@ export default function Home() {
     
     initializeAuth();
 
+    // クリーンアップ関数（1つだけ）
     return () => {
       clearTimeout(timeoutId);
-    };
-    
-    // 認証状態の変更を監視
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // トークン処理中はイベントによるチェックをスキップする（競合防止）
-        if (processingRef.current) {
-          return;
-        }
-
-        if (event === 'SIGNED_OUT' || !session) {
-          // セッションが無効な場合、sessionStorageを完全にクリア
-          if (typeof window !== 'undefined') {
-            sessionStorage.clear();
-          }
-          setUser(null);
-          setOrganizer(null);
-          // ログアウト時はフラグをリセット
-          setAuthCompleted(false);
-        } else if (event === 'SIGNED_IN' && session) {
-          // 認証完了をマーク（Google/LINE認証の場合）
-          setAuthCompleted(true);
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('authCompleted', 'true');
-          }
-          await checkAuth();
-        }
-      }
-    );
-
-    return () => {
       subscription.unsubscribe();
     };
   }, []);

@@ -31,10 +31,23 @@ export default function Home() {
   });
   const processingRef = useRef(false);
   const initializedRef = useRef(false);
+  const userRef = useRef<any>(null);
+  const organizerRef = useRef<any>(null);
+  const checkAuthRef = useRef<((showLoading?: boolean) => Promise<void>) | null>(null);
 
-  const checkAuth = useCallback(async () => {
+  // userとorganizerの最新値をrefに保持
+  useEffect(() => {
+    userRef.current = user;
+    organizerRef.current = organizer;
+  }, [user, organizer]);
+
+  const checkAuth = useCallback(async (showLoading: boolean = true) => {
     try {
-      setLoading(true);
+      // 既にデータが存在する場合は、ローディングを表示しない
+      const hasExistingData = userRef.current && organizerRef.current;
+      if (showLoading && !hasExistingData) {
+        setLoading(true);
+      }
       setError(null);
       
       // 環境変数のチェック
@@ -47,7 +60,9 @@ export default function Home() {
           key: supabaseAnonKey ? '設定済み' : '未設定'
         });
         setError('環境変数が設定されていません。Vercelの設定を確認してください。');
-        setLoading(false);
+        if (showLoading && !hasExistingData) {
+          setLoading(false);
+        }
         return;
       }
       
@@ -62,7 +77,9 @@ export default function Home() {
         }
         setUser(null);
         setOrganizer(null);
-        setLoading(false);
+        if (showLoading && !hasExistingData) {
+          setLoading(false);
+        }
         return;
       }
       
@@ -73,7 +90,9 @@ export default function Home() {
         }
         setUser(null);
         setOrganizer(null);
-        setLoading(false);
+        if (showLoading && !hasExistingData) {
+          setLoading(false);
+        }
         return;
       }
 
@@ -86,7 +105,17 @@ export default function Home() {
         }
         setUser(null);
         setOrganizer(null);
-        setLoading(false);
+        if (showLoading && !hasExistingData) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // 既に同じユーザー情報が存在する場合は、データベースクエリをスキップ
+      if (hasExistingData && userRef.current.id === currentUser.id) {
+        if (showLoading && !hasExistingData) {
+          setLoading(false);
+        }
         return;
       }
 
@@ -122,9 +151,16 @@ export default function Home() {
       setUser(null);
       setOrganizer(null);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, []);
+
+  // checkAuthをrefに保存
+  useEffect(() => {
+    checkAuthRef.current = checkAuth;
+  }, [checkAuth]);
 
   useEffect(() => {
     // グローバルエラーハンドラー: リフレッシュトークンエラーのみをキャッチ
@@ -199,7 +235,9 @@ export default function Home() {
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
                 try {
-                  await checkAuth();
+                  if (checkAuthRef.current) {
+                    await checkAuthRef.current(true);
+                  }
                 } catch (err) {
                   console.error('Error in checkAuth from processHashToken (code):', err);
                   // エラーが発生しても処理を続行
@@ -239,7 +277,9 @@ export default function Home() {
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
                 try {
-                  await checkAuth();
+                  if (checkAuthRef.current) {
+                    await checkAuthRef.current(true);
+                  }
                 } catch (err) {
                   console.error('Error in checkAuth from processHashToken (access_token):', err);
                   // エラーが発生しても処理を続行
@@ -283,7 +323,9 @@ export default function Home() {
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
                 try {
-                  await checkAuth();
+                  if (checkAuthRef.current) {
+                    await checkAuthRef.current(true);
+                  }
                 } catch (err) {
                   console.error('Error in checkAuth from processHashToken (token_hash):', err);
                   // エラーが発生しても処理を続行
@@ -352,8 +394,11 @@ export default function Home() {
             sessionStorage.setItem('authCompleted', 'true');
           }
           // checkAuthを呼び出す（エラーが発生しても続行）
+          // 既にデータが存在する場合はローディングを表示しない
           try {
-            await checkAuth();
+            if (checkAuthRef.current) {
+              await checkAuthRef.current(false);
+            }
           } catch (err) {
             console.error('Error in checkAuth from onAuthStateChange:', err);
             // エラーが発生しても処理を続行
@@ -361,6 +406,7 @@ export default function Home() {
         } else if (event === 'TOKEN_REFRESHED' && session) {
           // トークンが正常にリフレッシュされた場合、何もしない（正常な動作）
           // エラーは発生していないので、そのまま続行
+          // タブがフォーカスされたときの再読み込みを防ぐため、checkAuthは呼ばない
         }
       }
     );
@@ -390,7 +436,9 @@ export default function Home() {
         // 初期認証チェック（URLパラメータがない場合、または処理が完了した場合）
         if (!processingRef.current) {
           try {
-            await checkAuth();
+            if (checkAuthRef.current) {
+              await checkAuthRef.current(true);
+            }
           } catch (err) {
             console.error('Error in checkAuth from initializeAuth:', err);
             // エラーが発生しても処理を続行
@@ -416,7 +464,7 @@ export default function Home() {
       subscription.unsubscribe();
       window.removeEventListener('error', handleGlobalError);
     };
-  }, [checkAuth]);
+  }, []);
 
   if (loading) {
     return (
@@ -468,7 +516,9 @@ export default function Home() {
       <RegistrationForm 
         onRegistrationComplete={async () => {
           // 登録完了後、主催者情報を取得してからメインUIを表示
-          await checkAuth();
+          if (checkAuthRef.current) {
+            await checkAuthRef.current(true);
+          }
           // checkAuth完了後、organizerが取得されているはずなので、メインUIが表示される
         }}
       />

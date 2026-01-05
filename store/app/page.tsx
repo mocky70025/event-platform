@@ -25,6 +25,9 @@ export default function Home() {
   const [authError, setAuthError] = useState<{title: string, message: string} | null>(null);
   const processingRef = useRef(false);
   const checkingAuthRef = useRef(false); // checkAuthの重複実行防止用
+  const userRef = useRef<any>(null);
+  const exhibitorRef = useRef<any>(null);
+  const checkAuthRef = useRef<((showLoading?: boolean) => Promise<void>) | null>(null);
   // 認証完了フラグ（メール/Google/LINE）をsessionStorageから読み込む
   const [authCompleted, setAuthCompleted] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -35,6 +38,12 @@ export default function Home() {
   
   // 未読通知数を取得するフックをここに移動
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // userとexhibitorの最新値をrefに保持
+  useEffect(() => {
+    userRef.current = user;
+    exhibitorRef.current = exhibitor;
+  }, [user, exhibitor]);
   
   useEffect(() => {
     if (user) {
@@ -111,7 +120,9 @@ export default function Home() {
                }
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
-               await checkAuth();
+               if (checkAuthRef.current) {
+                 await checkAuthRef.current(true);
+               }
             }
             processingRef.current = false;
             return;
@@ -145,7 +156,9 @@ export default function Home() {
                }
                const newUrl = window.location.pathname;
                window.history.replaceState({}, document.title, newUrl);
-               await checkAuth();
+               if (checkAuthRef.current) {
+                 await checkAuthRef.current(true);
+               }
              }
              processingRef.current = false;
              return;
@@ -179,7 +192,9 @@ export default function Home() {
               }
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
-              await checkAuth();
+              if (checkAuthRef.current) {
+                await checkAuthRef.current(true);
+              }
             }
             processingRef.current = false;
           }
@@ -207,7 +222,9 @@ export default function Home() {
         
         // URLパラメータがない場合のみ初期認証チェックを実行
         if (!hasCode) {
-          await checkAuth();
+          if (checkAuthRef.current) {
+            await checkAuthRef.current(true);
+          }
         }
       }
     };
@@ -240,7 +257,10 @@ export default function Home() {
             sessionStorage.setItem('authCompleted', 'true');
           }
           // checkAuth()を実行してuserとexhibitorの状態を更新
-          await checkAuth();
+          // 既にデータが存在する場合はローディングを表示しない
+          if (checkAuthRef.current) {
+            await checkAuthRef.current(false);
+          }
         }
       }
     );
@@ -250,7 +270,7 @@ export default function Home() {
     };
   }, []); // pauseAuthへの依存を削除
 
-  const checkAuth = async () => {
+  const checkAuth = async (showLoading: boolean = true) => {
     try {
       // 重複実行防止
       if (checkingAuthRef.current) {
@@ -258,7 +278,11 @@ export default function Home() {
       }
       checkingAuthRef.current = true;
       
-      setLoading(true);
+      // 既にデータが存在する場合は、ローディングを表示しない
+      const hasExistingData = userRef.current && exhibitorRef.current;
+      if (showLoading && !hasExistingData) {
+        setLoading(true);
+      }
       
       // セッションを確認
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -266,7 +290,9 @@ export default function Home() {
       if (sessionError || !session) {
         setUser(null);
         setExhibitor(null);
-        setLoading(false);
+        if (showLoading && !hasExistingData) {
+          setLoading(false);
+        }
         checkingAuthRef.current = false;
         return;
       }
@@ -276,7 +302,18 @@ export default function Home() {
       if (!currentUser) {
         setUser(null);
         setExhibitor(null);
-        setLoading(false);
+        if (showLoading && !hasExistingData) {
+          setLoading(false);
+        }
+        checkingAuthRef.current = false;
+        return;
+      }
+
+      // 既に同じユーザー情報が存在する場合は、データベースクエリをスキップ
+      if (hasExistingData && userRef.current.id === currentUser.id) {
+        if (showLoading && !hasExistingData) {
+          setLoading(false);
+        }
         checkingAuthRef.current = false;
         return;
       }
@@ -309,7 +346,9 @@ export default function Home() {
       setUser(null);
       setExhibitor(null);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
       checkingAuthRef.current = false;
     }
   };
@@ -409,7 +448,9 @@ export default function Home() {
               if (typeof window !== 'undefined') {
                 sessionStorage.setItem('authCompleted', 'true');
               }
-              checkAuth();
+              if (checkAuthRef.current) {
+                checkAuthRef.current(true);
+              }
             }}
           />
         </div>
@@ -430,7 +471,11 @@ export default function Home() {
         ); 
       case 'profile':
         // プロフィール画面で未登録時の登録フォーム表示を行う
-        return <ExhibitorProfile onExhibitorUpdate={() => checkAuth()} />;
+        return <ExhibitorProfile onExhibitorUpdate={() => {
+          if (checkAuthRef.current) {
+            checkAuthRef.current(false);
+          }
+        }} />;
       case 'applications':
         return <ApplicationManagement />;
       case 'notifications':

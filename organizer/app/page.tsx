@@ -56,7 +56,21 @@ export default function Home() {
       }
       
       if (sessionError || !session) {
-        // セッションが無効な場合、sessionStorageを完全にクリア
+        // リフレッシュトークンエラーの場合、特別な処理
+        if (sessionError?.message?.includes('Refresh Token') || sessionError?.message?.includes('refresh_token')) {
+          // リフレッシュトークンが無効な場合、ストレージを完全にクリア
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('supabase.auth.token');
+            sessionStorage.clear();
+          }
+          // エラーを表示せず、ログアウト状態にする（正常な動作）
+          setUser(null);
+          setOrganizer(null);
+          setLoading(false);
+          return;
+        }
+        
+        // その他のセッションエラーの場合
         if (typeof window !== 'undefined') {
           sessionStorage.clear();
         }
@@ -111,6 +125,30 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // グローバルエラーハンドラー: リフレッシュトークンエラーをキャッチ
+    const handleGlobalError = (event: ErrorEvent) => {
+      // リフレッシュトークンエラーを検出
+      if (event.error?.message?.includes('Refresh Token') || 
+          event.error?.message?.includes('refresh_token') ||
+          event.error?.name === 'AuthApiError') {
+        // エラーをコンソールに表示しない（自動的に処理される）
+        event.preventDefault();
+        // ストレージをクリア
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('supabase.auth.token');
+          sessionStorage.clear();
+        }
+        // ログアウト状態にする
+        setUser(null);
+        setOrganizer(null);
+        setAuthCompleted(false);
+        setLoading(false);
+      }
+    };
+
+    // エラーハンドラーを登録
+    window.addEventListener('error', handleGlobalError);
+
     // メールリンクのハッシュ処理
     const processHashToken = async () => {
       try {
@@ -209,9 +247,24 @@ export default function Home() {
           return;
         }
 
+        // リフレッシュトークンエラーが発生した場合、セッションをクリア
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          // リフレッシュトークンが無効な場合、ストレージをクリア
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('supabase.auth.token');
+            sessionStorage.clear();
+          }
+          setUser(null);
+          setOrganizer(null);
+          setAuthCompleted(false);
+          setLoading(false);
+          return;
+        }
+
         if (event === 'SIGNED_OUT' || !session) {
           // セッションが無効な場合、sessionStorageを完全にクリア
           if (typeof window !== 'undefined') {
+            localStorage.removeItem('supabase.auth.token');
             sessionStorage.clear();
           }
           setUser(null);
@@ -225,6 +278,9 @@ export default function Home() {
             sessionStorage.setItem('authCompleted', 'true');
           }
           await checkAuth();
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          // トークンが正常にリフレッシュされた場合、何もしない（正常な動作）
+          // エラーは発生していないので、そのまま続行
         }
       }
     );
@@ -271,6 +327,7 @@ export default function Home() {
     return () => {
       clearTimeout(timeoutId);
       subscription.unsubscribe();
+      window.removeEventListener('error', handleGlobalError);
     };
   }, []);
 

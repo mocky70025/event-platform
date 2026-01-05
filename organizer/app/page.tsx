@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -32,7 +32,7 @@ export default function Home() {
   const processingRef = useRef(false);
   const initializedRef = useRef(false);
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -106,14 +106,25 @@ export default function Home() {
         .eq('user_id', currentUser.id)
         .single();
 
-      if (organizerError && organizerError.code !== 'PGRST116') {
-        // PGRST116は「行が見つからない」エラーなので、未登録を意味する
-        console.error('Error checking organizer:', organizerError);
-        // データベース接続エラーの可能性がある場合はエラーを表示
-        setError('主催者情報の取得に失敗しました: ' + organizerError.message);
+      if (organizerError) {
+        // PGRST116は「行が見つからない」エラーなので、未登録を意味する（正常）
+        if (organizerError.code === 'PGRST116') {
+          // 未登録の場合はnullを設定（正常な状態）
+          setOrganizer(null);
+        } else if (organizerError.status === 406 || organizerError.code === 'PGRST301') {
+          // 406エラーまたはRLSポリシーエラーの場合
+          console.error('RLS policy error or 406 error:', organizerError);
+          // エラーを表示せず、未登録として扱う（ユーザーは登録フォームに誘導される）
+          setOrganizer(null);
+        } else {
+          // その他のエラー
+          console.error('Error checking organizer:', organizerError);
+          // データベース接続エラーの可能性がある場合はエラーを表示
+          setError('主催者情報の取得に失敗しました: ' + organizerError.message);
+        }
+      } else {
+        setOrganizer(organizerData || null);
       }
-
-      setOrganizer(organizerData || null);
     } catch (error: any) {
       console.error('Error checking auth:', error);
       setError(error.message || '認証チェックに失敗しました');
@@ -126,7 +137,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     // グローバルエラーハンドラー: リフレッシュトークンエラーのみをキャッチ
@@ -366,7 +377,7 @@ export default function Home() {
       subscription.unsubscribe();
       window.removeEventListener('error', handleGlobalError);
     };
-  }, []);
+  }, [checkAuth]);
 
   if (loading) {
     return (

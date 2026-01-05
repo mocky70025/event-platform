@@ -28,7 +28,12 @@ export const supabase = createClient(
       // リフレッシュトークンエラーをコンソールに表示しない（自動的に処理される）
       headers: {
         'x-client-info': 'organizer-app',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
       },
+    },
+    db: {
+      schema: 'public',
     },
   }
 );

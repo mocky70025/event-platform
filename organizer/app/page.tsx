@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -33,6 +33,7 @@ export default function Home() {
   const processingRef = useRef(false);
   const userRef = useRef<any>(null);
   const organizerRef = useRef<any>(null);
+  const checkingAuthRef = useRef(false); // checkAuthの重複実行防止用
   const checkAuthRef = useRef<((showLoading?: boolean) => Promise<void>) | null>(null);
 
   // userとorganizerの最新値をrefに保持
@@ -41,71 +42,86 @@ export default function Home() {
     organizerRef.current = organizer;
   }, [user, organizer]);
 
-  const checkAuth = async (showLoading: boolean = true) => {
-    try {
-      // 重複実行防止は不要（storeアプリに合わせる）
-      
-      // 既にデータが存在する場合は、ローディングを表示しない
-      const hasExistingData = userRef.current && organizerRef.current;
-      if (showLoading && !hasExistingData) {
-        setLoading(true);
-      }
-      
-      // セッションを確認
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        setUser(null);
-        setOrganizer(null);
-        setLoading(false);
-        return;
-      }
-
-      // ユーザー情報を取得
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        setUser(null);
-        setOrganizer(null);
-        setLoading(false);
-        return;
-      }
-
-      // 既に同じユーザー情報が存在する場合は、データベースクエリをスキップ
-      if (hasExistingData && userRef.current.id === currentUser.id) {
-        setLoading(false);
-        return;
-      }
-
-      setUser(currentUser);
-
-      // 主催者情報を確認（406エラーを無視）
-      const { data: organizerData, error: organizerError } = await supabase
-        .from('organizers')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .limit(1)
-        .maybeSingle();
-
-      if (organizerError) {
-        console.error('Error checking organizer:', organizerError);
-      }
-
-      setOrganizer(organizerData || null);
-    } catch (error: any) {
-      console.error('Error checking auth:', error);
-      setUser(null);
-      setOrganizer(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // checkAuthをrefに保存
   useEffect(() => {
+    // checkAuth関数をuseEffectの中で定義（storeアプリと同じ構造）
+    const checkAuth = async (showLoading: boolean = true) => {
+      try {
+        // 重複実行防止
+        if (checkingAuthRef.current) {
+          return;
+        }
+        checkingAuthRef.current = true;
+        
+        // 既にデータが存在する場合は、ローディングを表示しない
+        const hasExistingData = userRef.current && organizerRef.current;
+        if (showLoading && !hasExistingData) {
+          setLoading(true);
+        }
+        
+        // セッションを確認
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          setUser(null);
+          setOrganizer(null);
+          if (showLoading && !hasExistingData) {
+            setLoading(false);
+          }
+          checkingAuthRef.current = false;
+          return;
+        }
+
+        // ユーザー情報を取得
+        const currentUser = await getCurrentUser();
+        if (!currentUser) {
+          setUser(null);
+          setOrganizer(null);
+          if (showLoading && !hasExistingData) {
+            setLoading(false);
+          }
+          checkingAuthRef.current = false;
+          return;
+        }
+
+        // 既に同じユーザー情報が存在する場合は、データベースクエリをスキップ
+        if (hasExistingData && userRef.current.id === currentUser.id) {
+          if (showLoading && !hasExistingData) {
+            setLoading(false);
+          }
+          checkingAuthRef.current = false;
+          return;
+        }
+
+        setUser(currentUser);
+
+        // 主催者情報を確認（406エラーを無視）
+        const { data: organizerData, error: organizerError } = await supabase
+          .from('organizers')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (organizerError) {
+          console.error('Error checking organizer:', organizerError);
+        }
+
+        setOrganizer(organizerData || null);
+      } catch (error: any) {
+        console.error('Error checking auth:', error);
+        setUser(null);
+        setOrganizer(null);
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+        checkingAuthRef.current = false;
+      }
+    };
+
+    // checkAuthをrefに保存（useEffectの外からアクセスできるように）
     checkAuthRef.current = checkAuth;
-  });
 
-  useEffect(() => {
     // メールリンクのハッシュ処理と認証状態監視
     const processHashToken = async () => {
       try {
@@ -150,9 +166,7 @@ export default function Home() {
               }
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
-              if (checkAuthRef.current) {
-                await checkAuthRef.current(true);
-              }
+              await checkAuth(true);
             }
             processingRef.current = false;
             return;
@@ -186,9 +200,7 @@ export default function Home() {
               }
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
-              if (checkAuthRef.current) {
-                await checkAuthRef.current(true);
-              }
+              await checkAuth(true);
             }
             processingRef.current = false;
             return;
@@ -222,9 +234,7 @@ export default function Home() {
               }
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
-              if (checkAuthRef.current) {
-                await checkAuthRef.current(true);
-              }
+              await checkAuth(true);
             }
             processingRef.current = false;
           }
@@ -280,9 +290,7 @@ export default function Home() {
           // checkAuthを呼び出す（エラーが発生しても続行）
           // 既にデータが存在する場合はローディングを表示しない
           try {
-            if (checkAuthRef.current) {
-              await checkAuthRef.current(false);
-            }
+            await checkAuth(false);
           } catch (err) {
             console.error('Error in checkAuth from onAuthStateChange:', err);
             // エラーが発生しても処理を続行
@@ -308,9 +316,7 @@ export default function Home() {
         
         // URLパラメータがない場合のみ初期認証チェックを実行
         if (!hasCode) {
-          if (checkAuthRef.current) {
-            await checkAuthRef.current(true);
-          }
+          await checkAuth(true);
         }
       }
     };

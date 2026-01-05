@@ -41,8 +41,10 @@ export default function Home() {
     organizerRef.current = organizer;
   }, [user, organizer]);
 
-  const checkAuth = useCallback(async (showLoading: boolean = true) => {
+  const checkAuth = async (showLoading: boolean = true) => {
     try {
+      // 重複実行防止は不要（storeアプリに合わせる）
+      
       // 既にデータが存在する場合は、ローディングを表示しない
       const hasExistingData = userRef.current && organizerRef.current;
       if (showLoading && !hasExistingData) {
@@ -52,23 +54,7 @@ export default function Home() {
       // セッションを確認
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        // エラーを表示せず、ログアウト状態にする
-        if (typeof window !== 'undefined') {
-          sessionStorage.clear();
-        }
-        setUser(null);
-        setOrganizer(null);
-        setLoading(false);
-        return;
-      }
-      
-      if (!session) {
-        // セッションがない場合
-        if (typeof window !== 'undefined') {
-          sessionStorage.clear();
-        }
+      if (sessionError || !session) {
         setUser(null);
         setOrganizer(null);
         setLoading(false);
@@ -78,10 +64,6 @@ export default function Home() {
       // ユーザー情報を取得
       const currentUser = await getCurrentUser();
       if (!currentUser) {
-        // ユーザーが取得できない場合、sessionStorageを完全にクリア
-        if (typeof window !== 'undefined') {
-          sessionStorage.clear();
-        }
         setUser(null);
         setOrganizer(null);
         setLoading(false);
@@ -97,43 +79,31 @@ export default function Home() {
       setUser(currentUser);
 
       // 主催者情報を確認（406エラーを無視）
-      try {
-        const { data: organizerData, error: organizerError } = await supabase
-          .from('organizers')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .single();
+      const { data: organizerData, error: organizerError } = await supabase
+        .from('organizers')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .limit(1)
+        .maybeSingle();
 
-        if (organizerError) {
-          // すべてのエラー（406エラー含む）を未登録として扱う
-          // エラーを表示せず、ユーザーを登録フォームに誘導
-          console.warn('Organizer query error (treated as not registered):', organizerError.code);
-          setOrganizer(null);
-        } else {
-          setOrganizer(organizerData || null);
-        }
-      } catch (queryError: any) {
-        // ネットワークエラーやその他の例外も未登録として扱う
-        console.warn('Organizer query exception (treated as not registered):', queryError);
-        setOrganizer(null);
+      if (organizerError) {
+        console.error('Error checking organizer:', organizerError);
       }
+
+      setOrganizer(organizerData || null);
     } catch (error: any) {
       console.error('Error checking auth:', error);
-      // エラーを表示せず、ログアウト状態にする
-      if (typeof window !== 'undefined') {
-        sessionStorage.clear();
-      }
       setUser(null);
       setOrganizer(null);
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setUser, setOrganizer]);
+  };
 
   // checkAuthをrefに保存
   useEffect(() => {
     checkAuthRef.current = checkAuth;
-  }, [checkAuth]);
+  });
 
   useEffect(() => {
     // メールリンクのハッシュ処理と認証状態監視

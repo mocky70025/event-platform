@@ -152,9 +152,7 @@ export default function Home() {
       setUser(null);
       setOrganizer(null);
     } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   }, []);
 

@@ -42,6 +42,10 @@ export default function Home() {
       const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       
       if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://placeholder.supabase.co') {
+        console.error('環境変数が設定されていません:', {
+          url: supabaseUrl || '未設定',
+          key: supabaseAnonKey ? '設定済み' : '未設定'
+        });
         setError('環境変数が設定されていません。Vercelの設定を確認してください。');
         setLoading(false);
         return;
@@ -157,7 +161,7 @@ export default function Home() {
     window.addEventListener('error', handleGlobalError);
 
     // メールリンクのハッシュ処理
-    const processHashToken = async () => {
+    const processHashToken = async (): Promise<boolean> => {
       try {
         if (typeof window !== 'undefined') {
           const hashString = window.location.hash.substring(1);
@@ -170,7 +174,7 @@ export default function Home() {
             console.error('Auth error:', error);
             setError('認証エラーが発生しました: ' + error);
             setLoading(false);
-            return;
+            return false; // 処理完了（エラー）
           }
 
           // PKCEフロー (code) の処理
@@ -179,7 +183,7 @@ export default function Home() {
           if (code && window.location.pathname !== '/auth/callback') {
             // auth/callback以外のページでcodeがある場合は、auth/callbackにリダイレクト
             window.location.href = `/auth/callback?code=${code}`;
-            return;
+            return false; // リダイレクト中（処理継続不要）
           }
 
           // Implicitフロー (access_token) の処理
@@ -187,7 +191,7 @@ export default function Home() {
           const refreshToken = hashParams.get('refresh_token');
           
           if (accessToken) {
-            if (processingRef.current) return;
+            if (processingRef.current) return false;
             processingRef.current = true;
             setLoading(true);
 
@@ -215,10 +219,10 @@ export default function Home() {
               console.error('Error setting session:', sessionErr);
               setError('認証処理に失敗しました: ' + (sessionErr.message || '不明なエラー'));
               setLoading(false);
-            } finally {
+              } finally {
               processingRef.current = false;
             }
-            return;
+            return true; // 処理完了（認証処理中）
           }
 
           // Implicitフロー (token_hash) の処理
@@ -226,7 +230,7 @@ export default function Home() {
           const type = hashParams.get('type');
           
           if (th && (type === 'signup' || type === 'magiclink' || type === 'recovery' || !type)) {
-            if (processingRef.current) return;
+            if (processingRef.current) return false;
             processingRef.current = true;
             setLoading(true);
             
@@ -257,13 +261,16 @@ export default function Home() {
             } finally {
               processingRef.current = false;
             }
+            return true; // 処理完了（認証処理中）
           }
         }
+        return true; // URLパラメータなし（通常の初期化）
       } catch (err: any) {
         console.error('Error processing hash token:', err);
         setError('認証処理中にエラーが発生しました: ' + (err.message || '不明なエラー'));
         processingRef.current = false;
         setLoading(false);
+        return false; // エラー発生
       }
     };
 
@@ -315,36 +322,38 @@ export default function Home() {
 
     // タイムアウト処理（10秒後にローディングを解除）
     const timeoutId = setTimeout(() => {
-      if (loading && !initializedRef.current) {
+      if (!initializedRef.current) {
         console.error('認証チェックがタイムアウトしました');
         setError('接続に時間がかかっています。ページをリロードしてください。');
         setLoading(false);
+        initializedRef.current = true; // タイムアウトしたことを記録
       }
     }, 10000);
 
     // まずprocessHashTokenを実行（URLパラメータの処理）
     const initializeAuth = async () => {
       try {
-        initializedRef.current = true;
-        await processHashToken();
+        const processed = await processHashToken();
         
-        // 初期認証チェック（URLパラメータがない場合）
-        // processHashTokenでcodeが処理されない場合のみ実行
-        if (typeof window !== 'undefined') {
-          const searchParams = new URLSearchParams(window.location.search);
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const hasCode = searchParams.get('code') || hashParams.get('access_token') || hashParams.get('token_hash');
-          
-          // URLパラメータがない場合のみ初期認証チェックを実行
-          if (!hasCode && !processingRef.current) {
-            await checkAuth();
-          }
+        // processHashTokenがfalseを返した場合（エラーまたはリダイレクト）は処理を終了
+        if (!processed) {
+          initializedRef.current = true;
+          clearTimeout(timeoutId);
+          return;
         }
+        
+        // 初期認証チェック（URLパラメータがない場合、または処理が完了した場合）
+        if (!processingRef.current) {
+          await checkAuth();
+        }
+        
+        initializedRef.current = true;
         clearTimeout(timeoutId);
       } catch (err: any) {
         console.error('Error initializing auth:', err);
         setError(err.message || '認証の初期化に失敗しました');
         setLoading(false);
+        initializedRef.current = true;
         clearTimeout(timeoutId);
       }
     };

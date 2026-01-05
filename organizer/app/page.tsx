@@ -125,12 +125,19 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // グローバルエラーハンドラー: リフレッシュトークンエラーをキャッチ
+    // グローバルエラーハンドラー: リフレッシュトークンエラーのみをキャッチ
     const handleGlobalError = (event: ErrorEvent) => {
-      // リフレッシュトークンエラーを検出
-      if (event.error?.message?.includes('Refresh Token') || 
-          event.error?.message?.includes('refresh_token') ||
-          event.error?.name === 'AuthApiError') {
+      // リフレッシュトークンエラーのみを検出（認証コールバック処理中のエラーは除外）
+      const errorMessage = event.error?.message || '';
+      const isRefreshTokenError = 
+        errorMessage.includes('Invalid Refresh Token') ||
+        errorMessage.includes('Refresh Token Not Found') ||
+        (errorMessage.includes('refresh_token') && errorMessage.includes('Not Found'));
+      
+      // 認証コールバック処理中はスキップ（/auth/callbackページで処理）
+      const isCallbackPage = typeof window !== 'undefined' && window.location.pathname === '/auth/callback';
+      
+      if (isRefreshTokenError && !isCallbackPage) {
         // エラーをコンソールに表示しない（自動的に処理される）
         event.preventDefault();
         // ストレージをクリア
@@ -161,6 +168,8 @@ export default function Home() {
           const error = hashParams.get('error') || searchParams.get('error');
           if (error) {
             console.error('Auth error:', error);
+            setError('認証エラーが発生しました: ' + error);
+            setLoading(false);
             return;
           }
 
@@ -182,24 +191,33 @@ export default function Home() {
             processingRef.current = true;
             setLoading(true);
 
-            const { error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || '',
-            });
+            try {
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken || '',
+              });
 
-            if (!error) {
-              // 認証完了をマーク
-              setAuthCompleted(true);
-              if (typeof window !== 'undefined') {
-                sessionStorage.setItem('authCompleted', 'true');
+              if (!sessionError) {
+                // 認証完了をマーク
+                setAuthCompleted(true);
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('authCompleted', 'true');
+                }
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+                await checkAuth();
+              } else {
+                console.error('Session error:', sessionError);
+                setError('セッションの設定に失敗しました: ' + sessionError.message);
+                setLoading(false);
               }
-              const newUrl = window.location.pathname;
-              window.history.replaceState({}, document.title, newUrl);
-              await checkAuth();
-            } else {
+            } catch (sessionErr: any) {
+              console.error('Error setting session:', sessionErr);
+              setError('認証処理に失敗しました: ' + (sessionErr.message || '不明なエラー'));
               setLoading(false);
+            } finally {
+              processingRef.current = false;
             }
-            processingRef.current = false;
             return;
           }
 
@@ -212,28 +230,38 @@ export default function Home() {
             processingRef.current = true;
             setLoading(true);
             
-            const { error } = await supabase.auth.verifyOtp({ 
-              token_hash: th, 
-              type: (type as any) || 'signup'
-            });
-            
-            if (!error) {
-              // 認証完了をマーク
-              setAuthCompleted(true);
-              if (typeof window !== 'undefined') {
-                sessionStorage.setItem('authCompleted', 'true');
+            try {
+              const { error: otpError } = await supabase.auth.verifyOtp({ 
+                token_hash: th, 
+                type: (type as any) || 'signup'
+              });
+              
+              if (!otpError) {
+                // 認証完了をマーク
+                setAuthCompleted(true);
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('authCompleted', 'true');
+                }
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+                await checkAuth();
+              } else {
+                console.error('OTP verification error:', otpError);
+                setError('認証コードの検証に失敗しました: ' + otpError.message);
+                setLoading(false);
               }
-              const newUrl = window.location.pathname;
-              window.history.replaceState({}, document.title, newUrl);
-              await checkAuth();
-            } else {
+            } catch (otpErr: any) {
+              console.error('Error verifying OTP:', otpErr);
+              setError('認証処理に失敗しました: ' + (otpErr.message || '不明なエラー'));
               setLoading(false);
+            } finally {
+              processingRef.current = false;
             }
-            processingRef.current = false;
           }
         }
       } catch (err: any) {
         console.error('Error processing hash token:', err);
+        setError('認証処理中にエラーが発生しました: ' + (err.message || '不明なエラー'));
         processingRef.current = false;
         setLoading(false);
       }

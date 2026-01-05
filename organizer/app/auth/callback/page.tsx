@@ -75,7 +75,7 @@ function AuthCallbackContent() {
           }
         } else {
           // セッションが既に確立されている場合
-          subscription = supabase.auth.onAuthStateChange((event, session) => {
+          const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (!isMounted) return;
 
             if (event === 'SIGNED_IN' && session) {
@@ -89,6 +89,7 @@ function AuthCallbackContent() {
               router.push('/');
             }
           });
+          subscription = authSubscription;
         }
       } catch (err: any) {
         console.error('Callback handler error:', err);

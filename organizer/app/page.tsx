@@ -32,6 +32,84 @@ export default function Home() {
   const processingRef = useRef(false);
   const initializedRef = useRef(false);
 
+  const checkAuth = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 環境変数のチェック
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://placeholder.supabase.co') {
+        setError('環境変数が設定されていません。Vercelの設定を確認してください。');
+        setLoading(false);
+        return;
+      }
+      
+      // セッションを確認
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        setError('セッションの取得に失敗しました: ' + sessionError.message);
+      }
+      
+      if (sessionError || !session) {
+        // セッションが無効な場合、sessionStorageを完全にクリア
+        if (typeof window !== 'undefined') {
+          sessionStorage.clear();
+        }
+        setUser(null);
+        setOrganizer(null);
+        setLoading(false);
+        return;
+      }
+
+      // ユーザー情報を取得
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        // ユーザーが取得できない場合、sessionStorageを完全にクリア
+        if (typeof window !== 'undefined') {
+          sessionStorage.clear();
+        }
+        setUser(null);
+        setOrganizer(null);
+        setLoading(false);
+        return;
+      }
+
+      setUser(currentUser);
+
+      // 主催者情報を確認
+      const { data: organizerData, error: organizerError } = await supabase
+        .from('organizers')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (organizerError && organizerError.code !== 'PGRST116') {
+        // PGRST116は「行が見つからない」エラーなので、未登録を意味する
+        console.error('Error checking organizer:', organizerError);
+        // データベース接続エラーの可能性がある場合はエラーを表示
+        setError('主催者情報の取得に失敗しました: ' + organizerError.message);
+      }
+
+      setOrganizer(organizerData || null);
+    } catch (error: any) {
+      console.error('Error checking auth:', error);
+      setError(error.message || '認証チェックに失敗しました');
+      // エラーが発生した場合も、sessionStorageを完全にクリア
+      if (typeof window !== 'undefined') {
+        sessionStorage.clear();
+      }
+      setUser(null);
+      setOrganizer(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // メールリンクのハッシュ処理
     const processHashToken = async () => {
@@ -195,74 +273,6 @@ export default function Home() {
       subscription.unsubscribe();
     };
   }, []);
-
-  const checkAuth = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // セッションを確認
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        setError('セッションの取得に失敗しました: ' + sessionError.message);
-      }
-      
-      if (sessionError || !session) {
-        // セッションが無効な場合、sessionStorageを完全にクリア
-        if (typeof window !== 'undefined') {
-          sessionStorage.clear();
-        }
-        setUser(null);
-        setOrganizer(null);
-        setLoading(false);
-        return;
-      }
-
-      // ユーザー情報を取得
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        // ユーザーが取得できない場合、sessionStorageを完全にクリア
-        if (typeof window !== 'undefined') {
-          sessionStorage.clear();
-        }
-        setUser(null);
-        setOrganizer(null);
-        setLoading(false);
-        return;
-      }
-
-      setUser(currentUser);
-
-      // 主催者情報を確認
-      const { data: organizerData, error: organizerError } = await supabase
-        .from('organizers')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
-
-      if (organizerError && organizerError.code !== 'PGRST116') {
-        // PGRST116は「行が見つからない」エラーなので、未登録を意味する
-        console.error('Error checking organizer:', organizerError);
-        // データベース接続エラーの可能性がある場合はエラーを表示
-        setError('主催者情報の取得に失敗しました: ' + organizerError.message);
-      }
-
-      setOrganizer(organizerData || null);
-    } catch (error: any) {
-      console.error('Error checking auth:', error);
-      setError(error.message || '認証チェックに失敗しました');
-      // エラーが発生した場合も、sessionStorageを完全にクリア
-      if (typeof window !== 'undefined') {
-        sessionStorage.clear();
-      }
-      setUser(null);
-      setOrganizer(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (

@@ -63,6 +63,8 @@ export default function Home() {
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
+            } else {
+              setLoading(false);
             }
             processingRef.current = false;
             return;
@@ -91,6 +93,8 @@ export default function Home() {
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
+            } else {
+              setLoading(false);
             }
             processingRef.current = false;
             return;
@@ -119,6 +123,8 @@ export default function Home() {
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
               await checkAuth();
+            } else {
+              setLoading(false);
             }
             processingRef.current = false;
           }
@@ -126,31 +132,34 @@ export default function Home() {
       } catch (err: any) {
         console.error('Error processing hash token:', err);
         processingRef.current = false;
+        setLoading(false);
       }
     };
 
     // まずprocessHashTokenを実行（URLパラメータの処理）
-    processHashToken();
-    
-    // 初期認証チェック（URLパラメータがない場合）
-    // processHashTokenでcodeが処理されない場合のみ実行
-    const checkInitialAuth = async () => {
-      if (typeof window !== 'undefined') {
-        const searchParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const hasCode = searchParams.get('code') || hashParams.get('access_token') || hashParams.get('token_hash');
+    const initializeAuth = async () => {
+      try {
+        await processHashToken();
         
-        // URLパラメータがない場合のみ初期認証チェックを実行
-        if (!hasCode) {
-          await checkAuth();
+        // 初期認証チェック（URLパラメータがない場合）
+        // processHashTokenでcodeが処理されない場合のみ実行
+        if (typeof window !== 'undefined') {
+          const searchParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const hasCode = searchParams.get('code') || hashParams.get('access_token') || hashParams.get('token_hash');
+          
+          // URLパラメータがない場合のみ初期認証チェックを実行
+          if (!hasCode && !processingRef.current) {
+            await checkAuth();
+          }
         }
+      } catch (err) {
+        console.error('Error initializing auth:', err);
+        setLoading(false);
       }
     };
     
-    // 少し待ってから初期認証チェックを実行（processHashTokenの完了を待つ）
-    setTimeout(() => {
-      checkInitialAuth();
-    }, 500);
+    initializeAuth();
     
     // 認証状態の変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

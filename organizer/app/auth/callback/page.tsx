@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -8,7 +8,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { AlertCircle } from 'lucide-react';
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [error, setError] = useState('');
@@ -32,10 +32,11 @@ export default function AuthCallback() {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           
           if (exchangeError) {
-            setError('認証処理に失敗しました');
+            console.error('Exchange code error:', exchangeError);
+            setError('認証処理に失敗しました: ' + exchangeError.message);
             setTimeout(() => {
               router.push('/');
-            }, 2000);
+            }, 3000);
             return;
           }
           
@@ -47,11 +48,12 @@ export default function AuthCallback() {
           // 認証成功後、codeパラメータなしでトップページにリダイレクト
           // メインページのonAuthStateChangeでauthCompletedフラグが設定される
           router.push('/');
-        } catch (err) {
-          setError('認証処理に失敗しました');
+        } catch (err: any) {
+          console.error('Auth callback error:', err);
+          setError(err.message || '認証処理に失敗しました');
           setTimeout(() => {
             router.push('/');
-          }, 2000);
+          }, 3000);
         }
       } else {
         // セッションが既に確立されている場合
@@ -98,5 +100,13 @@ export default function AuthCallback() {
     <div className="min-h-screen flex items-center justify-center bg-orange-50">
       <LoadingSpinner />
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

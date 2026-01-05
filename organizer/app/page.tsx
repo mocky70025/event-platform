@@ -48,27 +48,11 @@ export default function Home() {
           }
 
           // PKCEフロー (code) の処理
+          // auth/callbackページで処理されるため、ここではスキップ
           const code = searchParams.get('code');
-          if (code) {
-            if (processingRef.current) return;
-            processingRef.current = true;
-            setLoading(true);
-            
-            const { error } = await supabase.auth.exchangeCodeForSession(code);
-            
-            if (!error) {
-              // 認証完了をマーク
-              setAuthCompleted(true);
-              if (typeof window !== 'undefined') {
-                sessionStorage.setItem('authCompleted', 'true');
-              }
-              const newUrl = window.location.pathname;
-              window.history.replaceState({}, document.title, newUrl);
-              await checkAuth();
-            } else {
-              setLoading(false);
-            }
-            processingRef.current = false;
+          if (code && window.location.pathname !== '/auth/callback') {
+            // auth/callback以外のページでcodeがある場合は、auth/callbackにリダイレクト
+            window.location.href = `/auth/callback?code=${code}`;
             return;
           }
 
